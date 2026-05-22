@@ -15,6 +15,9 @@ class PigeonInstalledApp {
   final String? versionName;
   final int? versionCode;
   final bool isSystemApp;
+  final int? installedSizeBytes;
+  final bool isSplitApk;
+  final String? category;
 
   PigeonInstalledApp({
     required this.packageName,
@@ -23,6 +26,9 @@ class PigeonInstalledApp {
     this.versionName,
     this.versionCode,
     this.isSystemApp = false,
+    this.installedSizeBytes,
+    this.isSplitApk = false,
+    this.category,
   });
 }
 
@@ -38,6 +44,7 @@ class PigeonCloneInfo {
   final String? appIconPath;
   final int? memoryUsageMb;
   final int? lastLaunchedMs;
+  final int? storageSizeBytes;
 
   PigeonCloneInfo({
     required this.id,
@@ -50,6 +57,7 @@ class PigeonCloneInfo {
     this.appIconPath,
     this.memoryUsageMb,
     this.lastLaunchedMs,
+    this.storageSizeBytes,
   });
 }
 
@@ -72,6 +80,9 @@ class PigeonDeviceProfile {
   final String bluetoothMac;
   final String gsfId;
   final String advertisingId;
+  final String? serialNumber;
+  final String? timezone;
+  final String? locale;
   final String? proxyHost;
   final int? proxyPort;
   final String? proxyType;
@@ -94,52 +105,132 @@ class PigeonDeviceProfile {
     required this.bluetoothMac,
     required this.gsfId,
     required this.advertisingId,
+    this.serialNumber,
+    this.timezone,
+    this.locale,
     this.proxyHost,
     this.proxyPort,
     this.proxyType,
   });
 }
 
+/// Storage information for a clone.
+class PigeonStorageInfo {
+  final String cloneId;
+  final int totalSizeBytes;
+  final int dataSizeBytes;
+  final int cacheSizeBytes;
+
+  PigeonStorageInfo({
+    required this.cloneId,
+    required this.totalSizeBytes,
+    required this.dataSizeBytes,
+    required this.cacheSizeBytes,
+  });
+}
+
+/// Engine status information.
+class PigeonEngineStatus {
+  final bool initialized;
+  final int runningCloneCount;
+  final int totalCloneCount;
+  final int memoryUsageMb;
+
+  PigeonEngineStatus({
+    required this.initialized,
+    required this.runningCloneCount,
+    required this.totalCloneCount,
+    required this.memoryUsageMb,
+  });
+}
+
 /// Host API — Dart calls into native Android code.
 @HostApi()
 abstract class CloneEngineApi {
+  /// Initialize the virtualization engine.
   @async
   bool initializeEngine();
 
+  /// Check if the engine is ready.
+  bool isEngineReady();
+
+  /// Get engine status information.
+  PigeonEngineStatus getEngineStatus();
+
+  /// Get all installed apps available for cloning.
   @async
   List<PigeonInstalledApp> getInstalledApps();
 
+  /// Create a new clone of an app.
   @async
-  PigeonCloneInfo createClone(String packageName, int userId);
+  PigeonCloneInfo createClone(String packageName, int userId, String? profilePreset);
 
+  /// Launch a clone.
   @async
   bool launchClone(String cloneId);
 
+  /// Stop a running clone.
   @async
   bool stopClone(String cloneId);
 
+  /// Delete a clone and its data.
   @async
   bool deleteClone(String cloneId);
 
+  /// Get all created clones.
   @async
   List<PigeonCloneInfo> getClones();
 
+  /// Get the status of a specific clone.
   @async
   String getCloneStatus(String cloneId);
 
+  /// Get virtual profile for a clone.
   @async
   PigeonDeviceProfile? getCloneProfile(String cloneId);
 
+  /// Update virtual profile for a clone.
   @async
   bool updateProfile(String cloneId, PigeonDeviceProfile profile);
+
+  /// Reset virtual profile to new random values.
+  @async
+  PigeonDeviceProfile resetCloneProfile(String cloneId);
+
+  /// Get storage info for a clone.
+  @async
+  PigeonStorageInfo getCloneStorageInfo(String cloneId);
+
+  /// Clear a clone's cache.
+  @async
+  bool clearCloneCache(String cloneId);
+
+  /// Clear a clone's data (factory reset the clone).
+  @async
+  bool clearCloneData(String cloneId);
+
+  /// Set the maximum number of concurrent running clones.
+  bool setMaxConcurrentClones(int maxClones);
+
+  /// Set memory limit per clone in MB.
+  bool setMemoryLimitPerClone(int limitMb);
 }
 
 /// Flutter API — native Android calls into Dart.
 @FlutterApi()
 abstract class CloneEventApi {
+  /// Clone status changed.
   void onCloneStatusChanged(String cloneId, String newStatus);
 
+  /// Clone installation progress (0-100).
+  void onInstallProgress(String cloneId, int progressPercent);
+
+  /// Clone crashed or encountered an error.
   void onCloneError(String cloneId, String errorMessage);
 
+  /// Engine initialization complete.
   void onEngineInitialized(bool success);
+
+  /// Memory warning when usage is high.
+  void onMemoryWarning(int totalUsedMb, int thresholdMb);
 }
