@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../providers/gms_provider.dart';
+import '../../providers/performance_provider.dart';
 import '../../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -217,11 +218,158 @@ class SettingsScreen extends ConsumerWidget {
                 error: (_, __) => const SizedBox.shrink(),
               ),
           const Divider(),
+          _buildSectionHeader(context, 'Memory & Performance'),
+          ref.watch(memorySnapshotProvider).when(
+                data: (mem) => Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        Icons.memory,
+                        color: mem.isLowMemory ? Colors.red : Colors.green,
+                      ),
+                      title: const Text('RAM Usage'),
+                      subtitle: Text(
+                        '${mem.availableRamMb} MB available / ${mem.totalDeviceRamMb} MB total',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.developer_board),
+                      title: const Text('Engine Memory'),
+                      subtitle: Text(
+                        'Native: ${mem.engineNativeHeapMb} MB · Java: ${mem.engineJavaHeapMb} MB',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.apps),
+                      title: const Text('Clone Overhead'),
+                      subtitle: Text(
+                        '${mem.cloneProcessCount} processes · ~${mem.estimatedCloneOverheadMb} MB · Max recommended: ${mem.recommendedMaxClones}',
+                      ),
+                    ),
+                  ],
+                ),
+                loading: () => const ListTile(
+                  leading: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  title: Text('Loading memory info...'),
+                ),
+                error: (_, __) => const ListTile(
+                  leading: Icon(Icons.error_outline, color: Colors.red),
+                  title: Text('Failed to load memory info'),
+                ),
+              ),
+          ref.watch(performanceMetricsProvider).when(
+                data: (perf) => Column(
+                  children: [
+                    if (perf.totalLaunches > 0)
+                      ListTile(
+                        leading: const Icon(Icons.speed),
+                        title: const Text('Launch Times'),
+                        subtitle: Text(
+                          'Cold: ${perf.avgColdLaunchMs}ms · Warm: ${perf.avgWarmLaunchMs}ms · ${perf.totalLaunches} launches',
+                        ),
+                      ),
+                    ListTile(
+                      leading: Icon(
+                        perf.isCharging
+                            ? Icons.battery_charging_full
+                            : Icons.battery_std,
+                      ),
+                      title: Text('Battery: ${perf.batteryLevel}%'),
+                      subtitle: Text(
+                        'Power mode: ${perf.powerRecommendation.replaceAll('_', ' ')}',
+                      ),
+                    ),
+                  ],
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+          const Divider(),
+          _buildSectionHeader(context, 'Security'),
+          ref.watch(securityStatusProvider).when(
+                data: (sec) => Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        sec.overallSecure
+                            ? Icons.shield
+                            : Icons.shield_outlined,
+                        color:
+                            sec.overallSecure ? Colors.green : Colors.orange,
+                      ),
+                      title: const Text('Security Status'),
+                      subtitle: Text(
+                        sec.overallSecure
+                            ? 'All checks passed'
+                            : '${sec.issueCount} issue(s) detected',
+                      ),
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        Icons.fingerprint,
+                        color: sec.signatureValid
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                      title: const Text('APK Signature'),
+                      subtitle: Text(
+                        sec.signatureValid ? 'Valid' : 'Invalid or unknown',
+                      ),
+                    ),
+                    if (sec.deviceRooted)
+                      const ListTile(
+                        leading: Icon(
+                          Icons.warning_amber,
+                          color: Colors.orange,
+                        ),
+                        title: Text('Root Detected'),
+                        subtitle: Text(
+                          'Device is rooted — some apps may flag this',
+                        ),
+                      ),
+                    if (sec.debuggerAttached)
+                      const ListTile(
+                        leading: Icon(
+                          Icons.bug_report,
+                          color: Colors.orange,
+                        ),
+                        title: Text('Debugger Attached'),
+                        subtitle: Text(
+                          'A debugger is currently connected',
+                        ),
+                      ),
+                  ],
+                ),
+                loading: () => const ListTile(
+                  leading: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  title: Text('Running security checks...'),
+                ),
+                error: (_, __) => const ListTile(
+                  leading: Icon(Icons.error_outline, color: Colors.red),
+                  title: Text('Failed to run security check'),
+                ),
+              ),
+          const Divider(),
           _buildSectionHeader(context, 'About'),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('TitanClone'),
             subtitle: const Text('v1.0.0'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy Policy'),
+            subtitle: const Text('No data sent to external servers'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.description_outlined),

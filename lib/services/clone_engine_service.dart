@@ -422,6 +422,110 @@ class CloneEngineService {
       AppLogger.error('Failed to stop foreground service', error: e);
     }
   }
+
+  Future<MemorySnapshot> getMemorySnapshot() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('getMemorySnapshot');
+      if (result == null) return MemorySnapshot.empty();
+      return MemorySnapshot(
+        totalDeviceRamMb: result['totalDeviceRamMb'] as int? ?? 0,
+        availableRamMb: result['availableRamMb'] as int? ?? 0,
+        engineNativeHeapMb: result['engineNativeHeapMb'] as int? ?? 0,
+        engineJavaHeapMb: result['engineJavaHeapMb'] as int? ?? 0,
+        cloneProcessCount: result['cloneProcessCount'] as int? ?? 0,
+        estimatedCloneOverheadMb:
+            result['estimatedCloneOverheadMb'] as int? ?? 0,
+        isLowMemory: result['isLowMemory'] as bool? ?? false,
+        recommendedMaxClones: result['recommendedMaxClones'] as int? ?? 3,
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to get memory snapshot', error: e);
+      return MemorySnapshot.empty();
+    }
+  }
+
+  Future<SecurityStatus> performSecurityCheck() async {
+    try {
+      final result =
+          await _channel.invokeMethod<Map>('performSecurityCheck');
+      if (result == null) return SecurityStatus.unknown();
+      return SecurityStatus(
+        signatureValid: result['signatureValid'] as bool? ?? false,
+        debuggerAttached: result['debuggerAttached'] as bool? ?? false,
+        deviceRooted: result['deviceRooted'] as bool? ?? false,
+        isEmulator: result['isEmulator'] as bool? ?? false,
+        nativeLibsIntact: result['nativeLibsIntact'] as bool? ?? false,
+        overallSecure: result['overallSecure'] as bool? ?? false,
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to perform security check', error: e);
+      return SecurityStatus.unknown();
+    }
+  }
+
+  Future<PerformanceMetrics> getPerformanceMetrics() async {
+    try {
+      final result =
+          await _channel.invokeMethod<Map>('getPerformanceMetrics');
+      if (result == null) return PerformanceMetrics.empty();
+      return PerformanceMetrics(
+        avgColdLaunchMs: result['avgColdLaunchMs'] as int? ?? 0,
+        avgWarmLaunchMs: result['avgWarmLaunchMs'] as int? ?? 0,
+        avgProfileLoadMs: result['avgProfileLoadMs'] as int? ?? 0,
+        totalLaunches: result['totalLaunches'] as int? ?? 0,
+        batteryLevel: result['batteryLevel'] as int? ?? 0,
+        isCharging: result['isCharging'] as bool? ?? false,
+        powerRecommendation:
+            result['powerRecommendation'] as String? ?? 'UNKNOWN',
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to get performance metrics', error: e);
+      return PerformanceMetrics.empty();
+    }
+  }
+
+  Future<bool> canLaunchClone() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('canLaunchClone');
+      return result ?? true;
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to check launch capability', error: e);
+      return true;
+    }
+  }
+
+  Future<void> requestGc() async {
+    try {
+      await _channel.invokeMethod<void>('requestGc');
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to request GC', error: e);
+    }
+  }
+
+  Future<bool> encryptCloneData(String cloneId) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('encryptCloneData', {
+        'cloneId': cloneId,
+      });
+      return result ?? false;
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to encrypt clone data', error: e);
+      return false;
+    }
+  }
+
+  Future<bool> secureDeleteCloneData(String cloneId) async {
+    try {
+      final result =
+          await _channel.invokeMethod<bool>('secureDeleteCloneData', {
+        'cloneId': cloneId,
+      });
+      return result ?? false;
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to secure delete clone data', error: e);
+      return false;
+    }
+  }
 }
 
 class GmsState {
@@ -518,4 +622,107 @@ class StorageInfo {
     }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
+}
+
+class MemorySnapshot {
+  final int totalDeviceRamMb;
+  final int availableRamMb;
+  final int engineNativeHeapMb;
+  final int engineJavaHeapMb;
+  final int cloneProcessCount;
+  final int estimatedCloneOverheadMb;
+  final bool isLowMemory;
+  final int recommendedMaxClones;
+
+  const MemorySnapshot({
+    required this.totalDeviceRamMb,
+    required this.availableRamMb,
+    required this.engineNativeHeapMb,
+    required this.engineJavaHeapMb,
+    required this.cloneProcessCount,
+    required this.estimatedCloneOverheadMb,
+    required this.isLowMemory,
+    required this.recommendedMaxClones,
+  });
+
+  factory MemorySnapshot.empty() => const MemorySnapshot(
+        totalDeviceRamMb: 0,
+        availableRamMb: 0,
+        engineNativeHeapMb: 0,
+        engineJavaHeapMb: 0,
+        cloneProcessCount: 0,
+        estimatedCloneOverheadMb: 0,
+        isLowMemory: false,
+        recommendedMaxClones: 3,
+      );
+
+  double get usagePercent => totalDeviceRamMb > 0
+      ? ((totalDeviceRamMb - availableRamMb) / totalDeviceRamMb * 100)
+      : 0;
+}
+
+class SecurityStatus {
+  final bool signatureValid;
+  final bool debuggerAttached;
+  final bool deviceRooted;
+  final bool isEmulator;
+  final bool nativeLibsIntact;
+  final bool overallSecure;
+
+  const SecurityStatus({
+    required this.signatureValid,
+    required this.debuggerAttached,
+    required this.deviceRooted,
+    required this.isEmulator,
+    required this.nativeLibsIntact,
+    required this.overallSecure,
+  });
+
+  factory SecurityStatus.unknown() => const SecurityStatus(
+        signatureValid: false,
+        debuggerAttached: false,
+        deviceRooted: false,
+        isEmulator: false,
+        nativeLibsIntact: false,
+        overallSecure: false,
+      );
+
+  int get issueCount {
+    int count = 0;
+    if (!signatureValid) count++;
+    if (debuggerAttached) count++;
+    if (deviceRooted) count++;
+    if (!nativeLibsIntact) count++;
+    return count;
+  }
+}
+
+class PerformanceMetrics {
+  final int avgColdLaunchMs;
+  final int avgWarmLaunchMs;
+  final int avgProfileLoadMs;
+  final int totalLaunches;
+  final int batteryLevel;
+  final bool isCharging;
+  final String powerRecommendation;
+
+  const PerformanceMetrics({
+    required this.avgColdLaunchMs,
+    required this.avgWarmLaunchMs,
+    required this.avgProfileLoadMs,
+    required this.totalLaunches,
+    required this.batteryLevel,
+    required this.isCharging,
+    required this.powerRecommendation,
+  });
+
+  factory PerformanceMetrics.empty() => const PerformanceMetrics(
+        avgColdLaunchMs: 0,
+        avgWarmLaunchMs: 0,
+        avgProfileLoadMs: 0,
+        totalLaunches: 0,
+        batteryLevel: 0,
+        isCharging: false,
+        powerRecommendation: 'UNKNOWN',
+      );
 }
