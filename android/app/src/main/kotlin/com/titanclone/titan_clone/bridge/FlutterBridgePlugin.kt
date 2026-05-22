@@ -12,6 +12,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import com.titanclone.titan_clone.profile.VirtualProfileManager
 import com.titanclone.titan_clone.profile.ProfileGenerator
+import com.titanclone.titan_clone.profile.db.ProfileDatabase
 
 class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var methodChannel: MethodChannel
@@ -19,6 +20,7 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
     private lateinit var profileManager: VirtualProfileManager
     private lateinit var profileGenerator: ProfileGenerator
+    private lateinit var profileDb: ProfileDatabase
 
     private var eventSink: EventChannel.EventSink? = null
     private var engineInitialized = false
@@ -30,8 +32,9 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
+        profileDb = ProfileDatabase.getInstance(context)
         profileManager = VirtualProfileManager(context)
-        profileGenerator = ProfileGenerator()
+        profileGenerator = ProfileGenerator(profileDb.dao)
 
         methodChannel = MethodChannel(binding.binaryMessenger, METHOD_CHANNEL)
         methodChannel.setMethodCallHandler(this)
@@ -88,6 +91,23 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
                 val profileData = call.argument<Map<String, Any>>("profile")
                 updateProfile(cloneId, profileData, result)
             }
+            "getDevicePresets" -> getDevicePresets(result)
+            "setCloneProxy" -> {
+                val cloneId = call.argument<String>("cloneId") ?: ""
+                val host = call.argument<String>("host") ?: ""
+                val port = call.argument<Int>("port") ?: 0
+                val user = call.argument<String>("user")
+                val pass = call.argument<String>("pass")
+                setCloneProxy(cloneId, host, port, user, pass, result)
+            }
+            "getSystemProperties" -> {
+                val cloneId = call.argument<String>("cloneId") ?: ""
+                getSystemProperties(cloneId, result)
+            }
+            "validateProfile" -> {
+                val cloneId = call.argument<String>("cloneId") ?: ""
+                validateProfile(cloneId, result)
+            }
             else -> result.notImplemented()
         }
     }
@@ -140,15 +160,16 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
         try {
             // TODO: Integrate with BlackBox engine
             // val success = VirtualCore.get().installPackageAsUser(packageName, userId)
-            val profile = profileGenerator.generateProfile(userId)
-            profileManager.saveProfile(packageName, userId, profile)
+            val profile = profileManager.getOrCreateProfile(packageName, userId)
 
             val cloneInfo = mapOf(
-                "id" to "${packageName}_clone_${userId}",
+                "id" to profile.cloneId,
                 "packageName" to packageName,
                 "appName" to getAppLabel(packageName),
                 "userId" to userId,
                 "status" to "installing",
+                "profilePreset" to (profile.profilePreset ?: "random"),
+                "deviceModel" to profile.deviceModel,
                 "createdAt" to System.currentTimeMillis().toString()
             )
 
@@ -222,7 +243,30 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
     private fun getCloneProfile(cloneId: String, result: Result) {
         try {
             val profile = profileManager.getProfile(cloneId)
-            result.success(profile)
+            if (profile != null) {
+                result.success(mapOf(
+                    "cloneId" to profile.cloneId,
+                    "packageName" to profile.packageName,
+                    "userId" to profile.userId,
+                    "androidId" to profile.androidId,
+                    "deviceModel" to profile.deviceModel,
+                    "manufacturer" to profile.manufacturer,
+                    "brand" to profile.brand,
+                    "imei" to profile.imei,
+                    "macAddress" to profile.macAddress,
+                    "bluetoothMac" to profile.bluetoothMac,
+                    "phoneNumber" to profile.phoneNumber,
+                    "carrierName" to profile.carrierName,
+                    "locale" to profile.locale,
+                    "timezone" to profile.timezone,
+                    "profilePreset" to profile.profilePreset,
+                    "buildFingerprint" to profile.buildFingerprint,
+                    "proxyHost" to profile.proxyHost,
+                    "proxyPort" to profile.proxyPort
+                ))
+            } else {
+                result.success(null)
+            }
         } catch (e: Exception) {
             result.error("GET_PROFILE_FAILED", e.message, null)
         }
@@ -230,12 +274,72 @@ class FlutterBridgePlugin : FlutterPlugin, MethodCallHandler {
 
     private fun updateProfile(cloneId: String, profileData: Map<String, Any>?, result: Result) {
         try {
-            if (profileData != null) {
-                profileManager.updateProfile(cloneId, profileData)
+            val existing = profileManager.getProfile(cloneId)
+            if (existing != null && profileData != null) {
+                val updated = existing.copy(
+                    locale = profileData["locale"] as? String ?: existing.locale,
+                    timezone = profileData["timezone"] as? String ?: existing.timezone
+                )
+                profileManager.updateProfile(updated)
             }
             result.success(true)
         } catch (e: Exception) {
             result.error("UPDATE_PROFILE_FAILED", e.message, null)
+        }
+    }
+
+    private fun getDevicePresets(result: Result) {
+        try {
+            result.success(mapOf(
+                "count" to profileGenerator.getPresetCount(),
+                "presets" to listOf(
+                    "Google Pixel 8 Pro", "Samsung Galaxy S24 Ultra",
+                    "OnePlus 12", "Xiaomi 14 Pro", "Google Pixel 7",
+                    "Samsung Galaxy A54", "Motorola Edge 40 Pro",
+                    "Sony Xperia 1 V", "Nothing Phone (2)",
+                    "OPPO Find X7 Ultra", "Realme GT 5 Pro", "Vivo X100 Pro"
+                )
+            ))
+        } catch (e: Exception) {
+            result.error("GET_PRESETS_FAILED", e.message, null)
+        }
+    }
+
+    private fun setCloneProxy(
+        cloneId: String, host: String, port: Int,
+        user: String?, pass: String?, result: Result
+    ) {
+        try {
+            profileManager.setProxyConfig(cloneId, host, port, user, pass)
+            result.success(true)
+        } catch (e: Exception) {
+            result.error("SET_PROXY_FAILED", e.message, null)
+        }
+    }
+
+    private fun getSystemProperties(cloneId: String, result: Result) {
+        try {
+            val props = profileManager.getSystemProperties(cloneId)
+            result.success(props)
+        } catch (e: Exception) {
+            result.error("GET_PROPS_FAILED", e.message, null)
+        }
+    }
+
+    private fun validateProfile(cloneId: String, result: Result) {
+        try {
+            val profile = profileManager.getProfile(cloneId)
+            if (profile != null) {
+                val errors = profileGenerator.validateProfile(profile)
+                result.success(mapOf(
+                    "valid" to errors.isEmpty(),
+                    "errors" to errors
+                ))
+            } else {
+                result.error("PROFILE_NOT_FOUND", "No profile for $cloneId", null)
+            }
+        } catch (e: Exception) {
+            result.error("VALIDATE_FAILED", e.message, null)
         }
     }
 
