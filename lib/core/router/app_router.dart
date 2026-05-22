@@ -7,9 +7,11 @@ import '../../features/clone_detail/presentation/screens/clone_detail_screen.dar
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/profile_editor/presentation/screens/profile_editor_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
 
 abstract final class AppRoutes {
-  static const String dashboard = '/';
+  static const String splash = '/';
+  static const String dashboard = '/dashboard';
   static const String appPicker = '/app-picker';
   static const String cloneDetail = '/clone/:id';
   static const String profileEditor = '/clone/:id/profile';
@@ -18,8 +20,12 @@ abstract final class AppRoutes {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: AppRoutes.dashboard,
+    initialLocation: AppRoutes.splash,
     routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: AppRoutes.dashboard,
         builder: (context, state) => const DashboardScreen(),
