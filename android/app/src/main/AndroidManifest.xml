@@ -1,0 +1,79 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required permissions for app cloning -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:label="TitanClone"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true"
+        android:largeHeap="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- Virtual Server process — central service manager -->
+        <service
+            android:name="com.titanclone.engine.core.VirtualServerService"
+            android:exported="false"
+            android:process=":x" />
+
+        <!-- Clone process stubs — each clone runs in its own :pN process -->
+        <service android:name="com.titanclone.engine.process.CloneProcess0" android:exported="false" android:process=":p0" />
+        <service android:name="com.titanclone.engine.process.CloneProcess1" android:exported="false" android:process=":p1" />
+        <service android:name="com.titanclone.engine.process.CloneProcess2" android:exported="false" android:process=":p2" />
+        <service android:name="com.titanclone.engine.process.CloneProcess3" android:exported="false" android:process=":p3" />
+        <service android:name="com.titanclone.engine.process.CloneProcess4" android:exported="false" android:process=":p4" />
+        <service android:name="com.titanclone.engine.process.CloneProcess5" android:exported="false" android:process=":p5" />
+        <service android:name="com.titanclone.engine.process.CloneProcess6" android:exported="false" android:process=":p6" />
+        <service android:name="com.titanclone.engine.process.CloneProcess7" android:exported="false" android:process=":p7" />
+        <service android:name="com.titanclone.engine.process.CloneProcess8" android:exported="false" android:process=":p8" />
+        <service android:name="com.titanclone.engine.process.CloneProcess9" android:exported="false" android:process=":p9" />
+        <service android:name="com.titanclone.engine.process.CloneProcess10" android:exported="false" android:process=":p10" />
+        <service android:name="com.titanclone.engine.process.CloneProcess11" android:exported="false" android:process=":p11" />
+
+        <!-- Stub ContentProviders for clone process initialization -->
+        <provider
+            android:name="com.titanclone.engine.stubs.StubContentProvider0"
+            android:authorities="${applicationId}.stub.provider0"
+            android:exported="false"
+            android:process=":p0" />
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
