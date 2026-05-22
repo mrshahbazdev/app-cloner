@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../providers/gms_provider.dart';
 import '../../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -115,6 +116,106 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Supported Android'),
             subtitle: const Text('Android 10 (API 29) - Android 15 (API 35)'),
           ),
+          const Divider(),
+          _buildSectionHeader(context, 'Google Services'),
+          ref.watch(gmsStateProvider).when(
+                data: (gmsState) => Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        Icons.check_circle,
+                        color: gmsState.gmsAvailable ? Colors.green : Colors.red,
+                      ),
+                      title: const Text('GMS Status'),
+                      subtitle: Text(
+                        gmsState.gmsAvailable
+                            ? 'Available (${gmsState.gmsVersion ?? "unknown"})'
+                            : 'Not Available',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.store),
+                      title: const Text('Play Store'),
+                      subtitle: Text(
+                        gmsState.playStoreVersion != null
+                            ? 'v${gmsState.playStoreVersion}'
+                            : 'Not Installed',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.copy_all),
+                      title: const Text('Play Store Clones'),
+                      subtitle: Text(
+                        '${gmsState.activePlayStoreClones}/${gmsState.maxPlayStoreClones} slots used',
+                      ),
+                    ),
+                  ],
+                ),
+                loading: () => const ListTile(
+                  leading: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  title: Text('Loading GMS info...'),
+                ),
+                error: (_, __) => const ListTile(
+                  leading: Icon(Icons.error_outline, color: Colors.red),
+                  title: Text('Failed to load GMS info'),
+                ),
+              ),
+          const Divider(),
+          _buildSectionHeader(context, 'Device Compatibility'),
+          ref.watch(compatReportProvider).when(
+                data: (report) => Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        report.isSupported ? Icons.verified : Icons.warning,
+                        color: report.isSupported ? Colors.green : Colors.orange,
+                      ),
+                      title: Text('Android ${report.androidVersion} (API ${report.apiLevel})'),
+                      subtitle: Text(
+                        report.isSupported ? 'Fully Supported' : 'Limited Support',
+                      ),
+                    ),
+                    if (report.issues.isNotEmpty)
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('Issues'),
+                        subtitle: Text(report.issues.join('\n')),
+                        isThreeLine: report.issues.length > 1,
+                      ),
+                    if (report.recommendations.isNotEmpty)
+                      ListTile(
+                        leading: const Icon(Icons.lightbulb_outline),
+                        title: const Text('Recommendations'),
+                        subtitle: Text(report.recommendations.join('\n')),
+                        isThreeLine: report.recommendations.length > 1,
+                      ),
+                  ],
+                ),
+                loading: () => const ListTile(
+                  title: Text('Checking compatibility...'),
+                ),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+          ref.watch(batteryInfoProvider).when(
+                data: (info) => ListTile(
+                  leading: Icon(
+                    Icons.battery_alert,
+                    color: info.isIgnoringOptimization ? Colors.green : Colors.orange,
+                  ),
+                  title: const Text('Battery Optimization'),
+                  subtitle: Text(
+                    info.isIgnoringOptimization
+                        ? 'Disabled (recommended)'
+                        : 'Enabled — clones may be killed in background',
+                  ),
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
           const Divider(),
           _buildSectionHeader(context, 'About'),
           ListTile(

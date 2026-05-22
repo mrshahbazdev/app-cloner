@@ -144,6 +144,57 @@ class PigeonEngineStatus {
   });
 }
 
+/// GMS availability state.
+class PigeonGmsState {
+  final bool gmsAvailable;
+  final String? gmsVersion;
+  final String? playStoreVersion;
+  final bool gsfAvailable;
+  final int maxPlayStoreClones;
+  final int activePlayStoreClones;
+
+  PigeonGmsState({
+    required this.gmsAvailable,
+    this.gmsVersion,
+    this.playStoreVersion,
+    required this.gsfAvailable,
+    required this.maxPlayStoreClones,
+    required this.activePlayStoreClones,
+  });
+}
+
+/// Device compatibility report.
+class PigeonCompatReport {
+  final int apiLevel;
+  final String androidVersion;
+  final bool isSupported;
+  final List<String> issues;
+  final List<String> missingPermissions;
+  final List<String> recommendations;
+
+  PigeonCompatReport({
+    required this.apiLevel,
+    required this.androidVersion,
+    required this.isSupported,
+    required this.issues,
+    required this.missingPermissions,
+    required this.recommendations,
+  });
+}
+
+/// Battery optimization info.
+class PigeonBatteryInfo {
+  final bool isIgnoringOptimization;
+  final String oemBrand;
+  final String? oemIssue;
+
+  PigeonBatteryInfo({
+    required this.isIgnoringOptimization,
+    required this.oemBrand,
+    this.oemIssue,
+  });
+}
+
 /// Host API — Dart calls into native Android code.
 @HostApi()
 abstract class CloneEngineApi {
@@ -214,6 +265,29 @@ abstract class CloneEngineApi {
 
   /// Set memory limit per clone in MB.
   bool setMemoryLimitPerClone(int limitMb);
+
+  /// Get GMS availability state.
+  PigeonGmsState getGmsState();
+
+  /// Create a Play Store clone with device preset.
+  @async
+  String? createPlayStoreClone(String? devicePreset);
+
+  /// Delete a Play Store clone.
+  @async
+  bool deletePlayStoreClone(String cloneId);
+
+  /// Check device compatibility.
+  PigeonCompatReport checkCompatibility();
+
+  /// Get battery optimization info.
+  PigeonBatteryInfo getBatteryOptimizationInfo();
+
+  /// Start foreground service.
+  void startForegroundService(int runningCount);
+
+  /// Stop foreground service.
+  void stopForegroundService();
 }
 
 /// Flutter API — native Android calls into Dart.
@@ -233,4 +307,10 @@ abstract class CloneEventApi {
 
   /// Memory warning when usage is high.
   void onMemoryWarning(int totalUsedMb, int thresholdMb);
+
+  /// GMS checkin completed for a clone.
+  void onGmsCheckinComplete(String cloneId, bool success);
+
+  /// Foreground service state changed.
+  void onForegroundServiceStateChanged(bool running, int cloneCount);
 }
