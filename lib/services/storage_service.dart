@@ -34,6 +34,16 @@ class StorageService {
     return prefs.setBool(key, value);
   }
 
+  Future<int?> getInt(String key) async {
+    final prefs = await _preferences;
+    return prefs.getInt(key);
+  }
+
+  Future<bool> setInt(String key, int value) async {
+    final prefs = await _preferences;
+    return prefs.setInt(key, value);
+  }
+
   Future<bool> get isOnboardingCompleted async {
     final result = await getBool(StorageKeys.onboardingCompleted);
     return result ?? false;

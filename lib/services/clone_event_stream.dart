@@ -18,6 +18,15 @@ final cloneEventsProvider = StreamProvider<CloneEvent>((ref) {
   return eventStream.events;
 });
 
+final installProgressProvider =
+    StreamProvider.family<int, String>((ref, cloneId) {
+  final eventStream = ref.watch(cloneEventStreamProvider);
+  return eventStream.events
+      .where((e) =>
+          e.cloneId == cloneId && e.eventType == 'install_progress')
+      .map((e) => e.data?['percent'] as int? ?? 0);
+});
+
 class CloneEventStream {
   static const _eventChannel = EventChannel(AppConstants.eventChannelName);
 
