@@ -1,61 +1,81 @@
 package com.titanclone.titan_clone.profile
 
 import android.content.Context
-import android.content.SharedPreferences
-import org.json.JSONObject
+import android.util.Log
+import com.titanclone.titan_clone.profile.db.ProfileDatabase
+import com.titanclone.titan_clone.profile.db.VirtualProfileEntity
 
-class VirtualProfileManager(private val context: Context) {
+/**
+ * High-level profile management — orchestrates ProfileGenerator
+ * and ProfileDatabase to create, store, and retrieve virtual profiles.
+ */
+class VirtualProfileManager(context: Context) {
 
     companion object {
-        private const val PREFS_NAME = "titan_clone_profiles"
+        private const val TAG = "VirtualProfileMgr"
     }
 
-    private val prefs: SharedPreferences
-        get() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val db = ProfileDatabase.getInstance(context)
+    private val generator = ProfileGenerator(db.dao)
 
-    fun saveProfile(packageName: String, userId: Int, profile: Map<String, Any>) {
-        val key = "${packageName}_clone_${userId}"
-        val json = JSONObject(profile).toString()
-        prefs.edit().putString(key, json).apply()
-    }
+    /**
+     * Get or create a profile for a clone. If a profile already exists,
+     * return it. Otherwise generate a new one and persist it.
+     */
+    fun getOrCreateProfile(packageName: String, userId: Int): VirtualProfileEntity {
+        val existing = db.dao.getByPackageAndUser(packageName, userId)
+        if (existing != null) return existing
 
-    fun getProfile(cloneId: String): Map<String, Any>? {
-        val json = prefs.getString(cloneId, null) ?: return null
-        return try {
-            val jsonObj = JSONObject(json)
-            jsonObj.keys().asSequence().associateWith { key ->
-                jsonObj.get(key) as Any
-            }
-        } catch (_: Exception) {
-            null
+        val profile = generator.generateFullProfile(packageName, userId)
+        val errors = generator.validateProfile(profile)
+        if (errors.isNotEmpty()) {
+            Log.w(TAG, "Generated profile has validation issues: $errors")
         }
+
+        db.dao.insert(profile)
+        Log.i(TAG, "Created profile for ${profile.cloneId} (preset=${profile.profilePreset})")
+        return profile
     }
 
-    fun updateProfile(cloneId: String, profileData: Map<String, Any>) {
-        val existing = getProfile(cloneId)?.toMutableMap() ?: mutableMapOf()
-        existing.putAll(profileData)
-        val json = JSONObject(existing).toString()
-        prefs.edit().putString(cloneId, json).apply()
+    fun getProfile(cloneId: String): VirtualProfileEntity? {
+        return db.dao.getById(cloneId)
+    }
+
+    fun updateProfile(profile: VirtualProfileEntity) {
+        db.dao.update(profile)
     }
 
     fun deleteProfile(cloneId: String) {
-        prefs.edit().remove(cloneId).apply()
+        db.dao.delete(cloneId)
     }
 
-    fun getAllProfiles(): Map<String, Map<String, Any>> {
-        return prefs.all.mapNotNull { (key, value) ->
-            if (value is String) {
-                try {
-                    val jsonObj = JSONObject(value)
-                    key to jsonObj.keys().asSequence().associateWith { k ->
-                        jsonObj.get(k) as Any
-                    }
-                } catch (_: Exception) {
-                    null
-                }
-            } else {
-                null
-            }
-        }.toMap()
+    fun getAllProfiles(): List<VirtualProfileEntity> {
+        return db.dao.getAll()
+    }
+
+    /**
+     * Set proxy config for per-clone IP isolation.
+     */
+    fun setProxyConfig(
+        cloneId: String, host: String, port: Int,
+        user: String? = null, pass: String? = null, dns: String? = null
+    ) {
+        val profile = db.dao.getById(cloneId) ?: return
+        val updated = profile.copy(
+            proxyHost = host,
+            proxyPort = port,
+            proxyUser = user,
+            proxyPass = pass,
+            dnsServer = dns
+        )
+        db.dao.update(updated)
+    }
+
+    /**
+     * Get the 126+ system properties for native injection.
+     */
+    fun getSystemProperties(cloneId: String): Map<String, String> {
+        val profile = db.dao.getById(cloneId) ?: return emptyMap()
+        return generator.getSystemProperties(profile)
     }
 }
