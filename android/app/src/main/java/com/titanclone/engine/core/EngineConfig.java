@@ -7,8 +7,11 @@ public final class EngineConfig {
 
     private EngineConfig() {}
 
-    /** Maximum number of concurrent clone processes */
-    public static final int MAX_CLONE_PROCESSES = 12;
+    /** Maximum number of concurrent clone processes (30 stub slots in manifest) */
+    public static final int MAX_CLONE_PROCESSES = 30;
+
+    /** Host application package name */
+    public static final String HOST_PACKAGE = "com.titanclone.titan_clone";
 
     /** Virtual server process name suffix */
     public static final String SERVER_PROCESS_NAME = ":x";

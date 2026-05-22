@@ -53,6 +53,17 @@ public class VirtualStorage {
     }
 
     /**
+     * Get the directory for a specific package's APKs (base + splits).
+     */
+    public File getPackageApkDir(String packageName) {
+        File dir = new File(getPackagesDir(), packageName);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        return dir;
+    }
+
+    /**
      * Get the cached APK file for a package.
      */
     public File getCachedApk(String packageName) {
