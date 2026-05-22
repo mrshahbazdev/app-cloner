@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
         android:label="TitanClone"
@@ -35,32 +40,144 @@
             </intent-filter>
         </activity>
 
-        <!-- Virtual Server process — central service manager -->
+        <!-- Virtual Server process — central service manager for IPC and lifecycle -->
         <service
             android:name="com.titanclone.engine.core.VirtualServerService"
             android:exported="false"
             android:process=":x" />
 
-        <!-- Clone process stubs — each clone runs in its own :pN process -->
-        <service android:name="com.titanclone.engine.process.CloneProcess0" android:exported="false" android:process=":p0" />
-        <service android:name="com.titanclone.engine.process.CloneProcess1" android:exported="false" android:process=":p1" />
-        <service android:name="com.titanclone.engine.process.CloneProcess2" android:exported="false" android:process=":p2" />
-        <service android:name="com.titanclone.engine.process.CloneProcess3" android:exported="false" android:process=":p3" />
-        <service android:name="com.titanclone.engine.process.CloneProcess4" android:exported="false" android:process=":p4" />
-        <service android:name="com.titanclone.engine.process.CloneProcess5" android:exported="false" android:process=":p5" />
-        <service android:name="com.titanclone.engine.process.CloneProcess6" android:exported="false" android:process=":p6" />
-        <service android:name="com.titanclone.engine.process.CloneProcess7" android:exported="false" android:process=":p7" />
-        <service android:name="com.titanclone.engine.process.CloneProcess8" android:exported="false" android:process=":p8" />
-        <service android:name="com.titanclone.engine.process.CloneProcess9" android:exported="false" android:process=":p9" />
-        <service android:name="com.titanclone.engine.process.CloneProcess10" android:exported="false" android:process=":p10" />
-        <service android:name="com.titanclone.engine.process.CloneProcess11" android:exported="false" android:process=":p11" />
+        <!-- ============================================================ -->
+        <!-- STUB COMPONENTS: 30 process slots (:p0 through :p29)         -->
+        <!-- Each clone runs in its own isolated process.                  -->
+        <!-- ============================================================ -->
 
-        <!-- Stub ContentProviders for clone process initialization -->
-        <provider
-            android:name="com.titanclone.engine.stubs.StubContentProvider0"
-            android:authorities="${applicationId}.stub.provider0"
-            android:exported="false"
-            android:process=":p0" />
+        <!-- Stub Activities (proxy clone activities per process slot) -->
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P0" android:exported="false" android:process=":p0" android:taskAffinity="com.titanclone.p0" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P1" android:exported="false" android:process=":p1" android:taskAffinity="com.titanclone.p1" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P2" android:exported="false" android:process=":p2" android:taskAffinity="com.titanclone.p2" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P3" android:exported="false" android:process=":p3" android:taskAffinity="com.titanclone.p3" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P4" android:exported="false" android:process=":p4" android:taskAffinity="com.titanclone.p4" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P5" android:exported="false" android:process=":p5" android:taskAffinity="com.titanclone.p5" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P6" android:exported="false" android:process=":p6" android:taskAffinity="com.titanclone.p6" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P7" android:exported="false" android:process=":p7" android:taskAffinity="com.titanclone.p7" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P8" android:exported="false" android:process=":p8" android:taskAffinity="com.titanclone.p8" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P9" android:exported="false" android:process=":p9" android:taskAffinity="com.titanclone.p9" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P10" android:exported="false" android:process=":p10" android:taskAffinity="com.titanclone.p10" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P11" android:exported="false" android:process=":p11" android:taskAffinity="com.titanclone.p11" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P12" android:exported="false" android:process=":p12" android:taskAffinity="com.titanclone.p12" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P13" android:exported="false" android:process=":p13" android:taskAffinity="com.titanclone.p13" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P14" android:exported="false" android:process=":p14" android:taskAffinity="com.titanclone.p14" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P15" android:exported="false" android:process=":p15" android:taskAffinity="com.titanclone.p15" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P16" android:exported="false" android:process=":p16" android:taskAffinity="com.titanclone.p16" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P17" android:exported="false" android:process=":p17" android:taskAffinity="com.titanclone.p17" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P18" android:exported="false" android:process=":p18" android:taskAffinity="com.titanclone.p18" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P19" android:exported="false" android:process=":p19" android:taskAffinity="com.titanclone.p19" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P20" android:exported="false" android:process=":p20" android:taskAffinity="com.titanclone.p20" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P21" android:exported="false" android:process=":p21" android:taskAffinity="com.titanclone.p21" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P22" android:exported="false" android:process=":p22" android:taskAffinity="com.titanclone.p22" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P23" android:exported="false" android:process=":p23" android:taskAffinity="com.titanclone.p23" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P24" android:exported="false" android:process=":p24" android:taskAffinity="com.titanclone.p24" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P25" android:exported="false" android:process=":p25" android:taskAffinity="com.titanclone.p25" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P26" android:exported="false" android:process=":p26" android:taskAffinity="com.titanclone.p26" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P27" android:exported="false" android:process=":p27" android:taskAffinity="com.titanclone.p27" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P28" android:exported="false" android:process=":p28" android:taskAffinity="com.titanclone.p28" />
+        <activity android:name="com.titanclone.engine.stub.StubActivity$P29" android:exported="false" android:process=":p29" android:taskAffinity="com.titanclone.p29" />
+
+        <!-- Stub Services (proxy clone services per process slot) -->
+        <service android:name="com.titanclone.engine.stub.StubService$P0" android:exported="false" android:process=":p0" />
+        <service android:name="com.titanclone.engine.stub.StubService$P1" android:exported="false" android:process=":p1" />
+        <service android:name="com.titanclone.engine.stub.StubService$P2" android:exported="false" android:process=":p2" />
+        <service android:name="com.titanclone.engine.stub.StubService$P3" android:exported="false" android:process=":p3" />
+        <service android:name="com.titanclone.engine.stub.StubService$P4" android:exported="false" android:process=":p4" />
+        <service android:name="com.titanclone.engine.stub.StubService$P5" android:exported="false" android:process=":p5" />
+        <service android:name="com.titanclone.engine.stub.StubService$P6" android:exported="false" android:process=":p6" />
+        <service android:name="com.titanclone.engine.stub.StubService$P7" android:exported="false" android:process=":p7" />
+        <service android:name="com.titanclone.engine.stub.StubService$P8" android:exported="false" android:process=":p8" />
+        <service android:name="com.titanclone.engine.stub.StubService$P9" android:exported="false" android:process=":p9" />
+        <service android:name="com.titanclone.engine.stub.StubService$P10" android:exported="false" android:process=":p10" />
+        <service android:name="com.titanclone.engine.stub.StubService$P11" android:exported="false" android:process=":p11" />
+        <service android:name="com.titanclone.engine.stub.StubService$P12" android:exported="false" android:process=":p12" />
+        <service android:name="com.titanclone.engine.stub.StubService$P13" android:exported="false" android:process=":p13" />
+        <service android:name="com.titanclone.engine.stub.StubService$P14" android:exported="false" android:process=":p14" />
+        <service android:name="com.titanclone.engine.stub.StubService$P15" android:exported="false" android:process=":p15" />
+        <service android:name="com.titanclone.engine.stub.StubService$P16" android:exported="false" android:process=":p16" />
+        <service android:name="com.titanclone.engine.stub.StubService$P17" android:exported="false" android:process=":p17" />
+        <service android:name="com.titanclone.engine.stub.StubService$P18" android:exported="false" android:process=":p18" />
+        <service android:name="com.titanclone.engine.stub.StubService$P19" android:exported="false" android:process=":p19" />
+        <service android:name="com.titanclone.engine.stub.StubService$P20" android:exported="false" android:process=":p20" />
+        <service android:name="com.titanclone.engine.stub.StubService$P21" android:exported="false" android:process=":p21" />
+        <service android:name="com.titanclone.engine.stub.StubService$P22" android:exported="false" android:process=":p22" />
+        <service android:name="com.titanclone.engine.stub.StubService$P23" android:exported="false" android:process=":p23" />
+        <service android:name="com.titanclone.engine.stub.StubService$P24" android:exported="false" android:process=":p24" />
+        <service android:name="com.titanclone.engine.stub.StubService$P25" android:exported="false" android:process=":p25" />
+        <service android:name="com.titanclone.engine.stub.StubService$P26" android:exported="false" android:process=":p26" />
+        <service android:name="com.titanclone.engine.stub.StubService$P27" android:exported="false" android:process=":p27" />
+        <service android:name="com.titanclone.engine.stub.StubService$P28" android:exported="false" android:process=":p28" />
+        <service android:name="com.titanclone.engine.stub.StubService$P29" android:exported="false" android:process=":p29" />
+
+        <!-- Stub ContentProviders (unique authorities, trigger process init) -->
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P0" android:authorities="${applicationId}.stub.provider.p0" android:exported="false" android:process=":p0" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P1" android:authorities="${applicationId}.stub.provider.p1" android:exported="false" android:process=":p1" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P2" android:authorities="${applicationId}.stub.provider.p2" android:exported="false" android:process=":p2" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P3" android:authorities="${applicationId}.stub.provider.p3" android:exported="false" android:process=":p3" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P4" android:authorities="${applicationId}.stub.provider.p4" android:exported="false" android:process=":p4" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P5" android:authorities="${applicationId}.stub.provider.p5" android:exported="false" android:process=":p5" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P6" android:authorities="${applicationId}.stub.provider.p6" android:exported="false" android:process=":p6" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P7" android:authorities="${applicationId}.stub.provider.p7" android:exported="false" android:process=":p7" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P8" android:authorities="${applicationId}.stub.provider.p8" android:exported="false" android:process=":p8" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P9" android:authorities="${applicationId}.stub.provider.p9" android:exported="false" android:process=":p9" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P10" android:authorities="${applicationId}.stub.provider.p10" android:exported="false" android:process=":p10" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P11" android:authorities="${applicationId}.stub.provider.p11" android:exported="false" android:process=":p11" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P12" android:authorities="${applicationId}.stub.provider.p12" android:exported="false" android:process=":p12" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P13" android:authorities="${applicationId}.stub.provider.p13" android:exported="false" android:process=":p13" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P14" android:authorities="${applicationId}.stub.provider.p14" android:exported="false" android:process=":p14" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P15" android:authorities="${applicationId}.stub.provider.p15" android:exported="false" android:process=":p15" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P16" android:authorities="${applicationId}.stub.provider.p16" android:exported="false" android:process=":p16" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P17" android:authorities="${applicationId}.stub.provider.p17" android:exported="false" android:process=":p17" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P18" android:authorities="${applicationId}.stub.provider.p18" android:exported="false" android:process=":p18" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P19" android:authorities="${applicationId}.stub.provider.p19" android:exported="false" android:process=":p19" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P20" android:authorities="${applicationId}.stub.provider.p20" android:exported="false" android:process=":p20" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P21" android:authorities="${applicationId}.stub.provider.p21" android:exported="false" android:process=":p21" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P22" android:authorities="${applicationId}.stub.provider.p22" android:exported="false" android:process=":p22" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P23" android:authorities="${applicationId}.stub.provider.p23" android:exported="false" android:process=":p23" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P24" android:authorities="${applicationId}.stub.provider.p24" android:exported="false" android:process=":p24" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P25" android:authorities="${applicationId}.stub.provider.p25" android:exported="false" android:process=":p25" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P26" android:authorities="${applicationId}.stub.provider.p26" android:exported="false" android:process=":p26" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P27" android:authorities="${applicationId}.stub.provider.p27" android:exported="false" android:process=":p27" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P28" android:authorities="${applicationId}.stub.provider.p28" android:exported="false" android:process=":p28" />
+        <provider android:name="com.titanclone.engine.stub.StubContentProvider$P29" android:authorities="${applicationId}.stub.provider.p29" android:exported="false" android:process=":p29" />
+
+        <!-- Stub BroadcastReceivers (per process slot) -->
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P0" android:exported="false" android:process=":p0" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P1" android:exported="false" android:process=":p1" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P2" android:exported="false" android:process=":p2" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P3" android:exported="false" android:process=":p3" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P4" android:exported="false" android:process=":p4" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P5" android:exported="false" android:process=":p5" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P6" android:exported="false" android:process=":p6" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P7" android:exported="false" android:process=":p7" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P8" android:exported="false" android:process=":p8" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P9" android:exported="false" android:process=":p9" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P10" android:exported="false" android:process=":p10" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P11" android:exported="false" android:process=":p11" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P12" android:exported="false" android:process=":p12" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P13" android:exported="false" android:process=":p13" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P14" android:exported="false" android:process=":p14" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P15" android:exported="false" android:process=":p15" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P16" android:exported="false" android:process=":p16" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P17" android:exported="false" android:process=":p17" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P18" android:exported="false" android:process=":p18" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P19" android:exported="false" android:process=":p19" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P20" android:exported="false" android:process=":p20" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P21" android:exported="false" android:process=":p21" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P22" android:exported="false" android:process=":p22" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P23" android:exported="false" android:process=":p23" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P24" android:exported="false" android:process=":p24" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P25" android:exported="false" android:process=":p25" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P26" android:exported="false" android:process=":p26" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P27" android:exported="false" android:process=":p27" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P28" android:exported="false" android:process=":p28" />
+        <receiver android:name="com.titanclone.engine.stub.StubBroadcastReceiver$P29" android:exported="false" android:process=":p29" />
 
         <meta-data
             android:name="flutterEmbedding"

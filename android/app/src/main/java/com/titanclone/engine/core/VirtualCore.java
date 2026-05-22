@@ -3,13 +3,24 @@ package com.titanclone.engine.core;
 import android.content.Context;
 import android.util.Log;
 
+import com.titanclone.engine.installer.VirtualPackageInstaller;
+import com.titanclone.engine.ipc.BinderRouter;
+import com.titanclone.engine.ipc.IntentRouter;
+import com.titanclone.engine.pm.VirtualPackageManager;
+import com.titanclone.engine.process.VirtualProcessManager;
+import com.titanclone.engine.storage.VirtualStorage;
+import com.titanclone.engine.storage.VirtualStorageManager;
+import com.titanclone.engine.stubs.StubManager;
+
 /**
  * Core engine singleton — manages the virtualization lifecycle.
- * This is the integration point for BlackBox/VirtualApp engine.
+ * Wires together all engine subsystems: package management,
+ * process management, storage isolation, service proxying,
+ * intent routing, and Binder IPC.
  *
- * TODO: Replace stub implementation with BlackBox fork integration.
- * Fork from: https://github.com/ArmchairAncap/BlackBox (Apache 2.0)
- * Apply patches from: https://github.com/ArmchairAncap/NewBlackbox (Android 13+ fixes)
+ * Initialization order:
+ * 1. doAttachBaseContext() — early init in Application.attachBaseContext()
+ * 2. doCreate() — full init in Application.onCreate()
  */
 public class VirtualCore {
 
@@ -18,6 +29,16 @@ public class VirtualCore {
 
     private Context context;
     private boolean initialized = false;
+
+    // Subsystems
+    private VirtualPackageManager packageManager;
+    private VirtualProcessManager processManager;
+    private VirtualStorage storage;
+    private VirtualStorageManager storageManager;
+    private VirtualPackageInstaller installer;
+    private IntentRouter intentRouter;
+    private BinderRouter binderRouter;
+    private StubManager stubManager;
 
     private VirtualCore() {}
 
@@ -48,12 +69,33 @@ public class VirtualCore {
     public void doCreate() {
         if (initialized) return;
         try {
-            // TODO: Initialize system service stubs
-            // TODO: Register virtual ActivityManager, PackageManager, etc.
-            // TODO: Set up process management
-            // TODO: Initialize IO redirection via JNI
+            // Initialize subsystems
+            storage = new VirtualStorage(context);
+            storageManager = new VirtualStorageManager(context);
+            packageManager = new VirtualPackageManager();
+            processManager = VirtualProcessManager.get();
+            installer = new VirtualPackageInstaller(context, packageManager);
+            intentRouter = new IntentRouter(packageManager);
+            binderRouter = new BinderRouter();
+
+            // Initialize and inject system service stubs
+            stubManager = StubManager.get();
+            stubManager.registerStubs();
+
+            // Listen for process deaths
+            processManager.setProcessStateListener((cloneId, processIndex) -> {
+                Log.w(TAG, "Clone process died: " + cloneId + " :p" + processIndex);
+                storageManager.removeRedirectRules(
+                        cloneId.split("_user")[0],
+                        Integer.parseInt(cloneId.split("_user")[1]));
+                binderRouter.unregisterCloneServices(cloneId);
+            });
+
             initialized = true;
-            Log.i(TAG, "Engine initialized successfully");
+            Log.i(TAG, "Engine initialized: "
+                    + stubManager.getStubCount() + " stubs, "
+                    + processManager.getAvailableSlots() + " process slots");
+
         } catch (Exception e) {
             Log.e(TAG, "Engine initialization failed", e);
         }
@@ -69,53 +111,105 @@ public class VirtualCore {
 
     /**
      * Install a package into the virtual environment for a given user.
-     *
-     * @param packageName The package to clone
-     * @param userId      The virtual user ID (each clone gets a unique user)
-     * @return true if installation was successful
      */
     public boolean installPackageAsUser(String packageName, int userId) {
-        // TODO: Implement APK extraction, parsing, and virtual installation
-        Log.d(TAG, "installPackageAsUser: " + packageName + " user=" + userId);
-        return false;
+        if (!initialized) return false;
+        VirtualPackageInstaller.InstallResult result =
+                installer.installPackage(packageName, userId);
+        return result.success;
     }
 
     /**
      * Launch a cloned app.
-     *
-     * @param packageName The package to launch
-     * @param userId      The virtual user ID
-     * @return true if launch was successful
      */
     public boolean launchApp(String packageName, int userId) {
-        // TODO: Allocate :pN process, inject system service proxies, start Activity
-        Log.d(TAG, "launchApp: " + packageName + " user=" + userId);
-        return false;
+        if (!initialized) return false;
+
+        String cloneId = packageName + "_user" + userId;
+
+        // Check if already running
+        if (processManager.isProcessAlive(cloneId)) {
+            processManager.setProcessPriority(cloneId, true);
+            Log.d(TAG, "Clone already running, bringing to foreground: " + cloneId);
+            return true;
+        }
+
+        // Install IO redirect rules
+        storageManager.installRedirectRules(packageName, userId);
+
+        // Allocate process slot
+        VirtualProcessManager.CloneProcessRecord record =
+                processManager.allocateProcess(cloneId, packageName, userId);
+        if (record == null) {
+            Log.e(TAG, "No process slots available for " + cloneId);
+            return false;
+        }
+
+        // Set intent router context
+        intentRouter.setCurrentUserId(userId);
+
+        // Inject system service stubs in clone process
+        stubManager.injectAll();
+
+        Log.i(TAG, "Launched clone: " + cloneId + " in :p" + record.processIndex);
+        return true;
     }
 
     /**
-     * Kill a running clone.
+     * Stop a running clone gracefully.
      */
     public boolean killApp(String packageName, int userId) {
-        // TODO: Kill the :pN process for this clone
-        Log.d(TAG, "killApp: " + packageName + " user=" + userId);
-        return false;
+        if (!initialized) return false;
+
+        String cloneId = packageName + "_user" + userId;
+        storageManager.removeRedirectRules(packageName, userId);
+        binderRouter.unregisterCloneServices(cloneId);
+        processManager.releaseProcess(cloneId);
+
+        Log.d(TAG, "Killed clone: " + cloneId);
+        return true;
+    }
+
+    /**
+     * Force-stop a clone process.
+     */
+    public boolean forceStopApp(String packageName, int userId) {
+        if (!initialized) return false;
+
+        String cloneId = packageName + "_user" + userId;
+        processManager.forceStop(cloneId);
+        storageManager.removeRedirectRules(packageName, userId);
+        binderRouter.unregisterCloneServices(cloneId);
+        return true;
     }
 
     /**
      * Uninstall a clone and clean up its data.
      */
     public boolean uninstallPackageAsUser(String packageName, int userId) {
-        // TODO: Remove virtual data directory, cached APK, profiles
-        Log.d(TAG, "uninstallPackageAsUser: " + packageName + " user=" + userId);
-        return false;
+        if (!initialized) return false;
+
+        // Stop the clone first if running
+        killApp(packageName, userId);
+
+        return installer.uninstallPackage(packageName, userId);
     }
 
     /**
      * Check if a clone is currently running.
      */
     public boolean isAppRunning(String packageName, int userId) {
-        // TODO: Check :pN process state
-        return false;
+        String cloneId = packageName + "_user" + userId;
+        return processManager.isProcessAlive(cloneId);
     }
+
+    // Subsystem getters
+    public VirtualPackageManager getPackageManager() { return packageManager; }
+    public VirtualProcessManager getProcessManager() { return processManager; }
+    public VirtualStorage getStorage() { return storage; }
+    public VirtualStorageManager getStorageManager() { return storageManager; }
+    public VirtualPackageInstaller getInstaller() { return installer; }
+    public IntentRouter getIntentRouter() { return intentRouter; }
+    public BinderRouter getBinderRouter() { return binderRouter; }
+    public StubManager getStubManager() { return stubManager; }
 }
