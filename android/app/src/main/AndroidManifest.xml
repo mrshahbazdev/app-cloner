@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -39,6 +41,33 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+
+        <!-- Clone Foreground Service — keeps clone processes alive -->
+        <service
+            android:name="com.titanclone.titan_clone.service.CloneForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
+        <!-- Notification Router — routes notification taps to correct clone -->
+        <activity
+            android:name="com.titanclone.titan_clone.notification.CloneNotificationRouter"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true" />
+
+        <!-- Clone Alarm Receiver — handles proxied alarm broadcasts -->
+        <receiver
+            android:name="com.titanclone.titan_clone.service.CloneAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Boot Completed Receiver — restarts auto-start clones -->
+        <receiver
+            android:name="com.titanclone.titan_clone.service.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Virtual Server process — central service manager for IPC and lifecycle -->
         <service

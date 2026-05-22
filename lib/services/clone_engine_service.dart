@@ -281,6 +281,202 @@ class CloneEngineService {
       return false;
     }
   }
+
+  Future<GmsState> getGmsState() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('getGmsState');
+      if (result == null) {
+        return const GmsState(
+          gmsAvailable: false,
+          gmsVersion: null,
+          playStoreVersion: null,
+          gsfAvailable: false,
+          maxPlayStoreClones: 12,
+          activePlayStoreClones: 0,
+        );
+      }
+      return GmsState(
+        gmsAvailable: result['gmsAvailable'] as bool? ?? false,
+        gmsVersion: result['gmsVersion'] as String?,
+        playStoreVersion: result['playStoreVersion'] as String?,
+        gsfAvailable: result['gsfAvailable'] as bool? ?? false,
+        maxPlayStoreClones: result['maxPlayStoreClones'] as int? ?? 12,
+        activePlayStoreClones: result['activePlayStoreClones'] as int? ?? 0,
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to get GMS state', error: e);
+      return const GmsState(
+        gmsAvailable: false,
+        gmsVersion: null,
+        playStoreVersion: null,
+        gsfAvailable: false,
+        maxPlayStoreClones: 12,
+        activePlayStoreClones: 0,
+      );
+    }
+  }
+
+  Future<String?> createPlayStoreClone({String? devicePreset}) async {
+    try {
+      final result =
+          await _channel.invokeMethod<String>('createPlayStoreClone', {
+        if (devicePreset != null) 'devicePreset': devicePreset,
+      });
+      return result;
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to create Play Store clone', error: e);
+      return null;
+    }
+  }
+
+  Future<bool> deletePlayStoreClone(String cloneId) async {
+    try {
+      final result =
+          await _channel.invokeMethod<bool>('deletePlayStoreClone', {
+        'cloneId': cloneId,
+      });
+      return result ?? false;
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to delete Play Store clone', error: e);
+      return false;
+    }
+  }
+
+  Future<CompatReport> checkCompatibility() async {
+    try {
+      final result = await _channel.invokeMethod<Map>('checkCompatibility');
+      if (result == null) {
+        return CompatReport(
+          apiLevel: 0,
+          androidVersion: 'Unknown',
+          isSupported: false,
+          issues: [],
+          missingPermissions: [],
+          recommendations: [],
+        );
+      }
+      return CompatReport(
+        apiLevel: result['apiLevel'] as int? ?? 0,
+        androidVersion: result['androidVersion'] as String? ?? 'Unknown',
+        isSupported: result['isSupported'] as bool? ?? false,
+        issues: (result['issues'] as List?)?.cast<String>() ?? [],
+        missingPermissions:
+            (result['missingPermissions'] as List?)?.cast<String>() ?? [],
+        recommendations:
+            (result['recommendations'] as List?)?.cast<String>() ?? [],
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to check compatibility', error: e);
+      return CompatReport(
+        apiLevel: 0,
+        androidVersion: 'Unknown',
+        isSupported: false,
+        issues: [],
+        missingPermissions: [],
+        recommendations: [],
+      );
+    }
+  }
+
+  Future<BatteryInfo> getBatteryOptimizationInfo() async {
+    try {
+      final result =
+          await _channel.invokeMethod<Map>('getBatteryOptimizationInfo');
+      if (result == null) {
+        return const BatteryInfo(
+          isIgnoringOptimization: false,
+          oemBrand: 'Unknown',
+          oemIssue: null,
+        );
+      }
+      return BatteryInfo(
+        isIgnoringOptimization:
+            result['isIgnoringOptimization'] as bool? ?? false,
+        oemBrand: result['oemBrand'] as String? ?? 'Unknown',
+        oemIssue: result['oemIssue'] as String?,
+      );
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to get battery info', error: e);
+      return const BatteryInfo(
+        isIgnoringOptimization: false,
+        oemBrand: 'Unknown',
+        oemIssue: null,
+      );
+    }
+  }
+
+  Future<void> startForegroundService(int runningCount) async {
+    try {
+      await _channel.invokeMethod<void>('startForegroundService', {
+        'runningCount': runningCount,
+      });
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to start foreground service', error: e);
+    }
+  }
+
+  Future<void> stopForegroundService() async {
+    try {
+      await _channel.invokeMethod<void>('stopForegroundService');
+    } on PlatformException catch (e) {
+      AppLogger.error('Failed to stop foreground service', error: e);
+    }
+  }
+}
+
+class GmsState {
+  final bool gmsAvailable;
+  final String? gmsVersion;
+  final String? playStoreVersion;
+  final bool gsfAvailable;
+  final int maxPlayStoreClones;
+  final int activePlayStoreClones;
+
+  const GmsState({
+    required this.gmsAvailable,
+    this.gmsVersion,
+    this.playStoreVersion,
+    required this.gsfAvailable,
+    required this.maxPlayStoreClones,
+    required this.activePlayStoreClones,
+  });
+
+  bool get canCreatePlayStoreClone =>
+      gmsAvailable &&
+      playStoreVersion != null &&
+      activePlayStoreClones < maxPlayStoreClones;
+
+  int get slotsRemaining => maxPlayStoreClones - activePlayStoreClones;
+}
+
+class CompatReport {
+  final int apiLevel;
+  final String androidVersion;
+  final bool isSupported;
+  final List<String> issues;
+  final List<String> missingPermissions;
+  final List<String> recommendations;
+
+  const CompatReport({
+    required this.apiLevel,
+    required this.androidVersion,
+    required this.isSupported,
+    required this.issues,
+    required this.missingPermissions,
+    required this.recommendations,
+  });
+}
+
+class BatteryInfo {
+  final bool isIgnoringOptimization;
+  final String oemBrand;
+  final String? oemIssue;
+
+  const BatteryInfo({
+    required this.isIgnoringOptimization,
+    required this.oemBrand,
+    this.oemIssue,
+  });
 }
 
 class EngineStatus {

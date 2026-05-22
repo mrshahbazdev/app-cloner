@@ -10,6 +10,16 @@ import io.flutter.plugin.common.BinaryMessenger
 import com.titanclone.titan_clone.profile.VirtualProfileManager
 import com.titanclone.titan_clone.profile.ProfileGenerator
 import com.titanclone.titan_clone.profile.db.ProfileDatabase
+import com.titanclone.titan_clone.gms.GmsServiceProxy
+import com.titanclone.titan_clone.gms.PlayStoreCloneManager
+import com.titanclone.titan_clone.gms.CheckinInterceptor
+import com.titanclone.titan_clone.gms.AccountIsolationManager
+import com.titanclone.titan_clone.gms.FcmIsolationManager
+import com.titanclone.titan_clone.gms.MicroGManager
+import com.titanclone.titan_clone.compat.VersionCompatHandler
+import com.titanclone.titan_clone.service.BackgroundProcessManager
+import com.titanclone.titan_clone.service.CloneForegroundService
+import com.titanclone.titan_clone.notification.CloneNotificationManager
 
 class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private lateinit var context: Context
@@ -17,6 +27,15 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private lateinit var profileGenerator: ProfileGenerator
     private lateinit var profileDb: ProfileDatabase
     private lateinit var eventChannel: EventChannel
+    private lateinit var gmsProxy: GmsServiceProxy
+    private lateinit var playStoreManager: PlayStoreCloneManager
+    private lateinit var checkinInterceptor: CheckinInterceptor
+    private lateinit var accountIsolation: AccountIsolationManager
+    private lateinit var fcmIsolation: FcmIsolationManager
+    private lateinit var microGManager: MicroGManager
+    private lateinit var versionCompat: VersionCompatHandler
+    private lateinit var backgroundManager: BackgroundProcessManager
+    private lateinit var notificationManager: CloneNotificationManager
 
     private var eventSink: EventChannel.EventSink? = null
     private var flutterApi: CloneEventApi? = null
@@ -35,6 +54,17 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         profileDb = ProfileDatabase.getInstance(context)
         profileManager = VirtualProfileManager(context)
         profileGenerator = ProfileGenerator(profileDb.dao)
+
+        gmsProxy = GmsServiceProxy(context)
+        microGManager = MicroGManager(context)
+        playStoreManager = PlayStoreCloneManager(context, gmsProxy, profileManager, profileGenerator)
+        checkinInterceptor = CheckinInterceptor(context, profileManager)
+        accountIsolation = AccountIsolationManager(context)
+        fcmIsolation = FcmIsolationManager(context)
+        versionCompat = VersionCompatHandler(context)
+        backgroundManager = BackgroundProcessManager(context)
+        notificationManager = CloneNotificationManager(context)
+        notificationManager.createForegroundChannel()
 
         CloneEngineApi.setUp(binding.binaryMessenger, this)
         flutterApi = CloneEventApi(binding.binaryMessenger)
@@ -422,6 +452,66 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     override fun setMemoryLimitPerClone(limitMb: Long): Boolean {
         memoryLimitPerClone = limitMb.toInt()
         return true
+    }
+
+    override fun getGmsState(): PigeonGmsState {
+        val gmsState = gmsProxy.detectGmsState()
+        val precheck = playStoreManager.canCreatePlayStoreClone()
+        return PigeonGmsState(
+            gmsAvailable = gmsState.available,
+            gmsVersion = gmsState.gmsVersion,
+            playStoreVersion = gmsState.playStoreVersion,
+            gsfAvailable = gmsState.gsfAvailable,
+            maxPlayStoreClones = PlayStoreCloneManager.MAX_PLAY_STORE_CLONES.toLong(),
+            activePlayStoreClones = playStoreManager.getPlayStoreClones().size.toLong()
+        )
+    }
+
+    override fun createPlayStoreClone(devicePreset: String?, callback: (Result<String?>) -> Unit) {
+        try {
+            val cloneId = playStoreManager.createPlayStoreClone(devicePreset)
+            callback(Result.success(cloneId))
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+        }
+    }
+
+    override fun deletePlayStoreClone(cloneId: String, callback: (Result<Boolean>) -> Unit) {
+        try {
+            val result = playStoreManager.deletePlayStoreClone(cloneId)
+            callback(Result.success(result))
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+        }
+    }
+
+    override fun checkCompatibility(): PigeonCompatReport {
+        val report = versionCompat.checkCompatibility()
+        return PigeonCompatReport(
+            apiLevel = report.apiLevel.toLong(),
+            androidVersion = report.androidVersion,
+            isSupported = report.isSupported,
+            issues = report.issues.map { "${it.severity}: ${it.description}" },
+            missingPermissions = report.missingPermissions,
+            recommendations = report.recommendations
+        )
+    }
+
+    override fun getBatteryOptimizationInfo(): PigeonBatteryInfo {
+        val info = backgroundManager.detectBatteryOptimization()
+        return PigeonBatteryInfo(
+            isIgnoringOptimization = info.isIgnoringBatteryOptimization,
+            oemBrand = info.oemBrand,
+            oemIssue = info.oemIssue?.name
+        )
+    }
+
+    override fun startForegroundService(runningCount: Long) {
+        CloneForegroundService.start(context, runningCount.toInt())
+    }
+
+    override fun stopForegroundService() {
+        CloneForegroundService.stop(context)
     }
 
     private fun getAppLabel(packageName: String): String {
