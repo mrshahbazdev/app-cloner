@@ -9,11 +9,13 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.BinaryMessenger
 import com.titanclone.titan_clone.profile.VirtualProfileManager
 import com.titanclone.titan_clone.profile.ProfileGenerator
+import com.titanclone.titan_clone.profile.db.ProfileDatabase
 
 class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private lateinit var context: Context
     private lateinit var profileManager: VirtualProfileManager
     private lateinit var profileGenerator: ProfileGenerator
+    private lateinit var profileDb: ProfileDatabase
     private lateinit var eventChannel: EventChannel
 
     private var eventSink: EventChannel.EventSink? = null
@@ -30,8 +32,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
+        profileDb = ProfileDatabase.getInstance(context)
         profileManager = VirtualProfileManager(context)
-        profileGenerator = ProfileGenerator()
+        profileGenerator = ProfileGenerator(profileDb.dao)
 
         CloneEngineApi.setUp(binding.binaryMessenger, this)
         flutterApi = CloneEventApi(binding.binaryMessenger)
