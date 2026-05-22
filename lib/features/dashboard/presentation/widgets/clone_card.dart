@@ -41,92 +41,123 @@ class CloneCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: context.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   Icons.apps,
+                  size: 28,
                   color: context.colorScheme.primary,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      clone.appName,
-                      style: context.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          _statusIcon(clone.status),
-                          size: 14,
-                          color: _statusColor(clone.status),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          clone.status.label,
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: _statusColor(clone.status),
-                          ),
-                        ),
-                        if (clone.profile != null) ...[
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.smartphone,
-                            size: 14,
-                            color: context.colorScheme.outline,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              clone.profile!.name,
-                              style: context.textTheme.bodySmall?.copyWith(
-                                color: context.colorScheme.outline,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
+              const SizedBox(height: 10),
+              Text(
+                clone.appName,
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              if (clone.status.isRunning)
-                IconButton(
-                  icon: const Icon(Icons.stop),
-                  onPressed: onStop,
-                  tooltip: 'Stop clone',
-                )
-              else if (clone.status.canLaunch)
-                IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: onLaunch,
-                  tooltip: 'Launch clone',
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _statusIcon(clone.status),
+                    size: 12,
+                    color: _statusColor(clone.status),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    clone.status.label,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: _statusColor(clone.status),
+                    ),
+                  ),
+                ],
+              ),
+              if (clone.profile != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  clone.profile!.name,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: context.colorScheme.outline,
+                    fontSize: 10,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              const Icon(Icons.chevron_right),
+              ],
+              const Spacer(),
+              SizedBox(
+                height: 32,
+                child: _buildActionButton(context),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildActionButton(BuildContext context) {
+    if (clone.status.isRunning) {
+      return FilledButton.tonal(
+        onPressed: onStop,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.stop, size: 14),
+            SizedBox(width: 4),
+            Text('Stop', style: TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
+    }
+    if (clone.status.canLaunch) {
+      return FilledButton(
+        onPressed: onLaunch,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.play_arrow, size: 14),
+            SizedBox(width: 4),
+            Text('Launch', style: TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
+    }
+    if (clone.status == CloneStatus.installing) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
