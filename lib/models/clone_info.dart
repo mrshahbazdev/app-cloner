@@ -19,6 +19,7 @@ abstract class CloneInfo with _$CloneInfo {
     String? appIconPath,
     int? memoryUsageMb,
     DateTime? lastLaunched,
+    int? storageSizeBytes,
   }) = _CloneInfo;
 
   factory CloneInfo.fromJson(Map<String, dynamic> json) =>
@@ -34,6 +35,9 @@ abstract class InstalledApp with _$InstalledApp {
     String? versionName,
     int? versionCode,
     @Default(false) bool isSystemApp,
+    int? installedSizeBytes,
+    @Default(false) bool isSplitApk,
+    String? category,
   }) = _InstalledApp;
 
   factory InstalledApp.fromJson(Map<String, dynamic> json) =>
