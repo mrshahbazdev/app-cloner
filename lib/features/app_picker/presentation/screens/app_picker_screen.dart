@@ -7,6 +7,7 @@ import '../../../../models/clone_info.dart';
 import '../../../../services/clone_engine_service.dart';
 import '../../providers/app_picker_provider.dart';
 import '../widgets/app_list_tile.dart';
+import '../widgets/category_filter_bar.dart';
 
 class AppPickerScreen extends ConsumerWidget {
   const AppPickerScreen({super.key});
@@ -19,24 +20,32 @@ class AppPickerScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Select App to Clone'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              onChanged: (value) =>
-                  ref.read(appSearchQueryProvider.notifier).state = value,
-              decoration: InputDecoration(
-                hintText: 'Search apps...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: context.colorScheme.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide.none,
+          preferredSize: const Size.fromHeight(110),
+          child: Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: TextField(
+                  onChanged: (value) =>
+                      ref.read(appSearchQueryProvider.notifier).state = value,
+                  decoration: InputDecoration(
+                    hintText: 'Search apps...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: context.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-            ),
+              const SizedBox(height: 4),
+              const CategoryFilterBar(),
+            ],
           ),
         ),
       ),
@@ -60,7 +69,24 @@ class AppPickerScreen extends ConsumerWidget {
         ),
         data: (apps) {
           if (apps.isEmpty) {
-            return const Center(child: Text('No apps found'));
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.search_off,
+                      size: 64,
+                      color: context.colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text('No apps found',
+                      style: context.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text('Try adjusting your search or filter',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      )),
+                ],
+              ),
+            );
           }
 
           return ListView.builder(
@@ -87,7 +113,8 @@ class AppPickerScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Create Clone'),
-        content: Text('Clone "${app.appName}"?'),
+        content: Text('Clone "${app.appName}"?\n\n'
+            'A virtual identity will be automatically generated.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

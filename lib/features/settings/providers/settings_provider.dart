@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../services/storage_service.dart';
 
 final themeModeProvider =
@@ -17,7 +18,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 
   Future<void> _load() async {
     final storage = _ref.read(storageServiceProvider);
-    final value = await storage.getString('theme_mode');
+    final value = await storage.getString(StorageKeys.themeMode);
     if (value != null) {
       state = ThemeMode.values.firstWhere(
         (m) => m.name == value,
@@ -29,7 +30,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;
     final storage = _ref.read(storageServiceProvider);
-    await storage.setString('theme_mode', mode.name);
+    await storage.setString(StorageKeys.themeMode, mode.name);
   }
 }
 
@@ -47,13 +48,90 @@ class ProxyEnabledNotifier extends StateNotifier<bool> {
 
   Future<void> _load() async {
     final storage = _ref.read(storageServiceProvider);
-    final value = await storage.getBool('proxy_enabled');
+    final value = await storage.getBool(StorageKeys.proxyEnabled);
     state = value ?? false;
   }
 
   Future<void> toggle() async {
     state = !state;
     final storage = _ref.read(storageServiceProvider);
-    await storage.setBool('proxy_enabled', state);
+    await storage.setBool(StorageKeys.proxyEnabled, state);
+  }
+}
+
+final maxConcurrentClonesProvider =
+    StateNotifierProvider<MaxConcurrentClonesNotifier, int>((ref) {
+  return MaxConcurrentClonesNotifier(ref);
+});
+
+class MaxConcurrentClonesNotifier extends StateNotifier<int> {
+  MaxConcurrentClonesNotifier(this._ref)
+      : super(AppConstants.defaultMaxConcurrentClones) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  Future<void> _load() async {
+    final storage = _ref.read(storageServiceProvider);
+    final value = await storage.getInt(StorageKeys.maxConcurrentClones);
+    state = value ?? AppConstants.defaultMaxConcurrentClones;
+  }
+
+  Future<void> set(int value) async {
+    state = value;
+    final storage = _ref.read(storageServiceProvider);
+    await storage.setInt(StorageKeys.maxConcurrentClones, value);
+  }
+}
+
+final memoryLimitProvider =
+    StateNotifierProvider<MemoryLimitNotifier, int>((ref) {
+  return MemoryLimitNotifier(ref);
+});
+
+class MemoryLimitNotifier extends StateNotifier<int> {
+  MemoryLimitNotifier(this._ref)
+      : super(AppConstants.defaultMemoryLimitMb) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  Future<void> _load() async {
+    final storage = _ref.read(storageServiceProvider);
+    final value = await storage.getInt(StorageKeys.memoryLimitMb);
+    state = value ?? AppConstants.defaultMemoryLimitMb;
+  }
+
+  Future<void> set(int value) async {
+    state = value;
+    final storage = _ref.read(storageServiceProvider);
+    await storage.setInt(StorageKeys.memoryLimitMb, value);
+  }
+}
+
+final autoStartProvider =
+    StateNotifierProvider<AutoStartNotifier, bool>((ref) {
+  return AutoStartNotifier(ref);
+});
+
+class AutoStartNotifier extends StateNotifier<bool> {
+  AutoStartNotifier(this._ref) : super(false) {
+    _load();
+  }
+
+  final Ref _ref;
+
+  Future<void> _load() async {
+    final storage = _ref.read(storageServiceProvider);
+    final value = await storage.getBool(StorageKeys.autoStartEnabled);
+    state = value ?? false;
+  }
+
+  Future<void> toggle() async {
+    state = !state;
+    final storage = _ref.read(storageServiceProvider);
+    await storage.setBool(StorageKeys.autoStartEnabled, state);
   }
 }

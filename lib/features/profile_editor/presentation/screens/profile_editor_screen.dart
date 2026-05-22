@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../models/device_profile.dart';
+import '../../../../services/clone_engine_service.dart';
 import '../../providers/profile_editor_provider.dart';
 import '../widgets/device_preset_picker.dart';
 import '../widgets/profile_form_field.dart';
@@ -27,6 +28,8 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   late TextEditingController _manufacturerController;
   late TextEditingController _proxyHostController;
   late TextEditingController _proxyPortController;
+
+  bool _isRandomizing = false;
 
   @override
   void initState() {
@@ -67,6 +70,17 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
       appBar: AppBar(
         title: const Text('Edit Virtual Profile'),
         actions: [
+          IconButton(
+            icon: _isRandomizing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.shuffle),
+            tooltip: 'Randomize Profile',
+            onPressed: _isRandomizing ? null : () => _randomizeProfile(ref),
+          ),
           TextButton(
             onPressed: () => _saveProfile(ref),
             child: const Text('Save'),
@@ -158,8 +172,17 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Auto-Generated Identifiers (Read-Only)',
-                style: context.textTheme.titleSmall),
+            Row(
+              children: [
+                Icon(Icons.fingerprint,
+                    size: 20, color: context.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text('Auto-Generated Identifiers',
+                    style: context.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    )),
+              ],
+            ),
             const Divider(),
             _readOnlyRow('Android ID', profile.androidId),
             _readOnlyRow('IMEI', profile.imei),
@@ -167,6 +190,8 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
             _readOnlyRow('BT MAC', profile.bluetoothMac),
             _readOnlyRow('GSF ID', profile.gsfId),
             _readOnlyRow('Advertising ID', profile.advertisingId),
+            if (profile.fingerprint.isNotEmpty)
+              _readOnlyRow('Fingerprint', profile.fingerprint),
           ],
         ),
       ),
@@ -180,10 +205,37 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          SelectableText(value, style: const TextStyle(fontSize: 12)),
+          Flexible(
+            child: SelectableText(
+              _truncate(value),
+              style: const TextStyle(fontSize: 12),
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  String _truncate(String s) {
+    if (s.length <= 20) return s;
+    return '${s.substring(0, 8)}...${s.substring(s.length - 6)}';
+  }
+
+  Future<void> _randomizeProfile(WidgetRef ref) async {
+    setState(() => _isRandomizing = true);
+
+    try {
+      final engine = ref.read(cloneEngineServiceProvider);
+      final newProfile = await engine.resetCloneProfile(widget.cloneId);
+      if (newProfile != null && mounted) {
+        _populateFields(newProfile);
+        ref.invalidate(profileEditorProvider(widget.cloneId));
+        context.showSnackBar('Profile randomized');
+      }
+    } finally {
+      if (mounted) setState(() => _isRandomizing = false);
+    }
   }
 
   Future<void> _saveProfile(WidgetRef ref) async {

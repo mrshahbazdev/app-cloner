@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../models/clone_status.dart';
 import '../../providers/dashboard_provider.dart';
+import '../widgets/add_clone_card.dart';
 import '../widgets/clone_card.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/running_clones_bar.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -14,11 +17,27 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clonesAsync = ref.watch(dashboardProvider);
+    final isWide = context.screenSize.width > 600;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('TitanClone'),
         actions: [
+          clonesAsync.whenOrNull(
+                data: (clones) {
+                  final runningCount =
+                      clones.where((c) => c.status == CloneStatus.running).length;
+                  if (runningCount == 0) return null;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Badge(
+                      label: Text('$runningCount'),
+                      child: const Icon(Icons.play_circle_outline),
+                    ),
+                  );
+                },
+              ) ??
+              const SizedBox.shrink(),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.push(AppRoutes.settings),
@@ -54,22 +73,52 @@ class DashboardScreen extends ConsumerWidget {
           data: (clones) {
             if (clones.isEmpty) return const EmptyState();
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: clones.length,
-              itemBuilder: (context, index) {
-                final clone = clones[index];
-                return CloneCard(
-                  clone: clone,
-                  onTap: () => context.push('/clone/${clone.id}'),
-                  onLaunch: () => ref
-                      .read(dashboardProvider.notifier)
-                      .launchClone(clone.id),
-                  onStop: () => ref
-                      .read(dashboardProvider.notifier)
-                      .stopClone(clone.id),
-                );
-              },
+            final runningClones =
+                clones.where((c) => c.status == CloneStatus.running).toList();
+
+            return CustomScrollView(
+              slivers: [
+                if (runningClones.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: RunningClonesBar(
+                      runningCount: runningClones.length,
+                      totalCount: clones.length,
+                    ),
+                  ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isWide ? 3 : 2,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: isWide ? 1.1 : 0.9,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index == clones.length) {
+                          return AddCloneCard(
+                            onTap: () => context.push(AppRoutes.appPicker),
+                          );
+                        }
+
+                        final clone = clones[index];
+                        return CloneCard(
+                          clone: clone,
+                          onTap: () => context.push('/clone/${clone.id}'),
+                          onLaunch: () => ref
+                              .read(dashboardProvider.notifier)
+                              .launchClone(clone.id),
+                          onStop: () => ref
+                              .read(dashboardProvider.notifier)
+                              .stopClone(clone.id),
+                        );
+                      },
+                      childCount: clones.length + 1,
+                    ),
+                  ),
+                ),
+              ],
             );
           },
         ),

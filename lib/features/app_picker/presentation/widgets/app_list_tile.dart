@@ -13,6 +13,17 @@ class AppListTile extends StatelessWidget {
   final InstalledApp app;
   final VoidCallback onTap;
 
+  IconData _categoryIcon(String? category) {
+    return switch (category?.toLowerCase()) {
+      'social' => Icons.people,
+      'games' => Icons.sports_esports,
+      'productivity' => Icons.work,
+      'media' => Icons.play_circle,
+      'tools' => Icons.build,
+      _ => Icons.android,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListTile(
@@ -24,16 +35,41 @@ class AppListTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
-          Icons.android,
+          _categoryIcon(app.category),
           color: context.colorScheme.secondary,
         ),
       ),
       title: Text(app.appName),
-      subtitle: Text(
-        app.packageName,
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.colorScheme.outline,
-        ),
+      subtitle: Row(
+        children: [
+          Expanded(
+            child: Text(
+              app.packageName,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (app.category != null && app.category!.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: context.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                app.category!,
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: context.colorScheme.outline,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
       trailing: app.isSystemApp
           ? Chip(
@@ -43,7 +79,7 @@ class AppListTile extends StatelessWidget {
               ),
               visualDensity: VisualDensity.compact,
             )
-          : null,
+          : const Icon(Icons.content_copy, size: 20),
       onTap: onTap,
     );
   }

@@ -23,6 +23,7 @@ _CloneInfo _$CloneInfoFromJson(Map<String, dynamic> json) => _CloneInfo(
       json['lastLaunched'] == null
           ? null
           : DateTime.parse(json['lastLaunched'] as String),
+  storageSizeBytes: (json['storageSizeBytes'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$CloneInfoToJson(_CloneInfo instance) =>
@@ -37,6 +38,7 @@ Map<String, dynamic> _$CloneInfoToJson(_CloneInfo instance) =>
       'appIconPath': instance.appIconPath,
       'memoryUsageMb': instance.memoryUsageMb,
       'lastLaunched': instance.lastLaunched?.toIso8601String(),
+      'storageSizeBytes': instance.storageSizeBytes,
     };
 
 const _$CloneStatusEnumMap = {
@@ -55,6 +57,9 @@ _InstalledApp _$InstalledAppFromJson(Map<String, dynamic> json) =>
       versionName: json['versionName'] as String?,
       versionCode: (json['versionCode'] as num?)?.toInt(),
       isSystemApp: json['isSystemApp'] as bool? ?? false,
+      installedSizeBytes: (json['installedSizeBytes'] as num?)?.toInt(),
+      isSplitApk: json['isSplitApk'] as bool? ?? false,
+      category: json['category'] as String?,
     );
 
 Map<String, dynamic> _$InstalledAppToJson(_InstalledApp instance) =>
@@ -65,6 +70,9 @@ Map<String, dynamic> _$InstalledAppToJson(_InstalledApp instance) =>
       'versionName': instance.versionName,
       'versionCode': instance.versionCode,
       'isSystemApp': instance.isSystemApp,
+      'installedSizeBytes': instance.installedSizeBytes,
+      'isSplitApk': instance.isSplitApk,
+      'category': instance.category,
     };
 
 _CloneEvent _$CloneEventFromJson(Map<String, dynamic> json) => _CloneEvent(

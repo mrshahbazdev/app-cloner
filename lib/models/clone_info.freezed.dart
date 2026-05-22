@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CloneInfo {
 
- String get id; String get packageName; String get appName; int get userId; CloneStatus get status; DateTime get createdAt; DeviceProfile? get profile; String? get appIconPath; int? get memoryUsageMb; DateTime? get lastLaunched;
+ String get id; String get packageName; String get appName; int get userId; CloneStatus get status; DateTime get createdAt; DeviceProfile? get profile; String? get appIconPath; int? get memoryUsageMb; DateTime? get lastLaunched; int? get storageSizeBytes;
 /// Create a copy of CloneInfo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $CloneInfoCopyWith<CloneInfo> get copyWith => _$CloneInfoCopyWithImpl<CloneInfo>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CloneInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.profile, profile) || other.profile == profile)&&(identical(other.appIconPath, appIconPath) || other.appIconPath == appIconPath)&&(identical(other.memoryUsageMb, memoryUsageMb) || other.memoryUsageMb == memoryUsageMb)&&(identical(other.lastLaunched, lastLaunched) || other.lastLaunched == lastLaunched));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CloneInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.profile, profile) || other.profile == profile)&&(identical(other.appIconPath, appIconPath) || other.appIconPath == appIconPath)&&(identical(other.memoryUsageMb, memoryUsageMb) || other.memoryUsageMb == memoryUsageMb)&&(identical(other.lastLaunched, lastLaunched) || other.lastLaunched == lastLaunched)&&(identical(other.storageSizeBytes, storageSizeBytes) || other.storageSizeBytes == storageSizeBytes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,packageName,appName,userId,status,createdAt,profile,appIconPath,memoryUsageMb,lastLaunched);
+int get hashCode => Object.hash(runtimeType,id,packageName,appName,userId,status,createdAt,profile,appIconPath,memoryUsageMb,lastLaunched,storageSizeBytes);
 
 @override
 String toString() {
-  return 'CloneInfo(id: $id, packageName: $packageName, appName: $appName, userId: $userId, status: $status, createdAt: $createdAt, profile: $profile, appIconPath: $appIconPath, memoryUsageMb: $memoryUsageMb, lastLaunched: $lastLaunched)';
+  return 'CloneInfo(id: $id, packageName: $packageName, appName: $appName, userId: $userId, status: $status, createdAt: $createdAt, profile: $profile, appIconPath: $appIconPath, memoryUsageMb: $memoryUsageMb, lastLaunched: $lastLaunched, storageSizeBytes: $storageSizeBytes)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $CloneInfoCopyWith<$Res>  {
   factory $CloneInfoCopyWith(CloneInfo value, $Res Function(CloneInfo) _then) = _$CloneInfoCopyWithImpl;
 @useResult
 $Res call({
- String id, String packageName, String appName, int userId, CloneStatus status, DateTime createdAt, DeviceProfile? profile, String? appIconPath, int? memoryUsageMb, DateTime? lastLaunched
+ String id, String packageName, String appName, int userId, CloneStatus status, DateTime createdAt, DeviceProfile? profile, String? appIconPath, int? memoryUsageMb, DateTime? lastLaunched, int? storageSizeBytes
 });
 
 
@@ -65,7 +65,7 @@ class _$CloneInfoCopyWithImpl<$Res>
 
 /// Create a copy of CloneInfo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? packageName = null,Object? appName = null,Object? userId = null,Object? status = null,Object? createdAt = null,Object? profile = freezed,Object? appIconPath = freezed,Object? memoryUsageMb = freezed,Object? lastLaunched = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? packageName = null,Object? appName = null,Object? userId = null,Object? status = null,Object? createdAt = null,Object? profile = freezed,Object? appIconPath = freezed,Object? memoryUsageMb = freezed,Object? lastLaunched = freezed,Object? storageSizeBytes = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,packageName: null == packageName ? _self.packageName : packageName // ignore: cast_nullable_to_non_nullable
@@ -77,7 +77,8 @@ as DateTime,profile: freezed == profile ? _self.profile : profile // ignore: cas
 as DeviceProfile?,appIconPath: freezed == appIconPath ? _self.appIconPath : appIconPath // ignore: cast_nullable_to_non_nullable
 as String?,memoryUsageMb: freezed == memoryUsageMb ? _self.memoryUsageMb : memoryUsageMb // ignore: cast_nullable_to_non_nullable
 as int?,lastLaunched: freezed == lastLaunched ? _self.lastLaunched : lastLaunched // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,storageSizeBytes: freezed == storageSizeBytes ? _self.storageSizeBytes : storageSizeBytes // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 /// Create a copy of CloneInfo
@@ -174,10 +175,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched,  int? storageSizeBytes)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CloneInfo() when $default != null:
-return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched);case _:
+return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched,_that.storageSizeBytes);case _:
   return orElse();
 
 }
@@ -195,10 +196,10 @@ return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.stat
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched,  int? storageSizeBytes)  $default,) {final _that = this;
 switch (_that) {
 case _CloneInfo():
-return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched);case _:
+return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched,_that.storageSizeBytes);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +216,10 @@ return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.stat
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String packageName,  String appName,  int userId,  CloneStatus status,  DateTime createdAt,  DeviceProfile? profile,  String? appIconPath,  int? memoryUsageMb,  DateTime? lastLaunched,  int? storageSizeBytes)?  $default,) {final _that = this;
 switch (_that) {
 case _CloneInfo() when $default != null:
-return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched);case _:
+return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.status,_that.createdAt,_that.profile,_that.appIconPath,_that.memoryUsageMb,_that.lastLaunched,_that.storageSizeBytes);case _:
   return null;
 
 }
@@ -230,7 +231,7 @@ return $default(_that.id,_that.packageName,_that.appName,_that.userId,_that.stat
 @JsonSerializable()
 
 class _CloneInfo implements CloneInfo {
-  const _CloneInfo({required this.id, required this.packageName, required this.appName, required this.userId, required this.status, required this.createdAt, this.profile, this.appIconPath, this.memoryUsageMb, this.lastLaunched});
+  const _CloneInfo({required this.id, required this.packageName, required this.appName, required this.userId, required this.status, required this.createdAt, this.profile, this.appIconPath, this.memoryUsageMb, this.lastLaunched, this.storageSizeBytes});
   factory _CloneInfo.fromJson(Map<String, dynamic> json) => _$CloneInfoFromJson(json);
 
 @override final  String id;
@@ -243,6 +244,7 @@ class _CloneInfo implements CloneInfo {
 @override final  String? appIconPath;
 @override final  int? memoryUsageMb;
 @override final  DateTime? lastLaunched;
+@override final  int? storageSizeBytes;
 
 /// Create a copy of CloneInfo
 /// with the given fields replaced by the non-null parameter values.
@@ -257,16 +259,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CloneInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.profile, profile) || other.profile == profile)&&(identical(other.appIconPath, appIconPath) || other.appIconPath == appIconPath)&&(identical(other.memoryUsageMb, memoryUsageMb) || other.memoryUsageMb == memoryUsageMb)&&(identical(other.lastLaunched, lastLaunched) || other.lastLaunched == lastLaunched));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CloneInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.profile, profile) || other.profile == profile)&&(identical(other.appIconPath, appIconPath) || other.appIconPath == appIconPath)&&(identical(other.memoryUsageMb, memoryUsageMb) || other.memoryUsageMb == memoryUsageMb)&&(identical(other.lastLaunched, lastLaunched) || other.lastLaunched == lastLaunched)&&(identical(other.storageSizeBytes, storageSizeBytes) || other.storageSizeBytes == storageSizeBytes));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,packageName,appName,userId,status,createdAt,profile,appIconPath,memoryUsageMb,lastLaunched);
+int get hashCode => Object.hash(runtimeType,id,packageName,appName,userId,status,createdAt,profile,appIconPath,memoryUsageMb,lastLaunched,storageSizeBytes);
 
 @override
 String toString() {
-  return 'CloneInfo(id: $id, packageName: $packageName, appName: $appName, userId: $userId, status: $status, createdAt: $createdAt, profile: $profile, appIconPath: $appIconPath, memoryUsageMb: $memoryUsageMb, lastLaunched: $lastLaunched)';
+  return 'CloneInfo(id: $id, packageName: $packageName, appName: $appName, userId: $userId, status: $status, createdAt: $createdAt, profile: $profile, appIconPath: $appIconPath, memoryUsageMb: $memoryUsageMb, lastLaunched: $lastLaunched, storageSizeBytes: $storageSizeBytes)';
 }
 
 
@@ -277,7 +279,7 @@ abstract mixin class _$CloneInfoCopyWith<$Res> implements $CloneInfoCopyWith<$Re
   factory _$CloneInfoCopyWith(_CloneInfo value, $Res Function(_CloneInfo) _then) = __$CloneInfoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String packageName, String appName, int userId, CloneStatus status, DateTime createdAt, DeviceProfile? profile, String? appIconPath, int? memoryUsageMb, DateTime? lastLaunched
+ String id, String packageName, String appName, int userId, CloneStatus status, DateTime createdAt, DeviceProfile? profile, String? appIconPath, int? memoryUsageMb, DateTime? lastLaunched, int? storageSizeBytes
 });
 
 
@@ -294,7 +296,7 @@ class __$CloneInfoCopyWithImpl<$Res>
 
 /// Create a copy of CloneInfo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? packageName = null,Object? appName = null,Object? userId = null,Object? status = null,Object? createdAt = null,Object? profile = freezed,Object? appIconPath = freezed,Object? memoryUsageMb = freezed,Object? lastLaunched = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? packageName = null,Object? appName = null,Object? userId = null,Object? status = null,Object? createdAt = null,Object? profile = freezed,Object? appIconPath = freezed,Object? memoryUsageMb = freezed,Object? lastLaunched = freezed,Object? storageSizeBytes = freezed,}) {
   return _then(_CloneInfo(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,packageName: null == packageName ? _self.packageName : packageName // ignore: cast_nullable_to_non_nullable
@@ -306,7 +308,8 @@ as DateTime,profile: freezed == profile ? _self.profile : profile // ignore: cas
 as DeviceProfile?,appIconPath: freezed == appIconPath ? _self.appIconPath : appIconPath // ignore: cast_nullable_to_non_nullable
 as String?,memoryUsageMb: freezed == memoryUsageMb ? _self.memoryUsageMb : memoryUsageMb // ignore: cast_nullable_to_non_nullable
 as int?,lastLaunched: freezed == lastLaunched ? _self.lastLaunched : lastLaunched // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,storageSizeBytes: freezed == storageSizeBytes ? _self.storageSizeBytes : storageSizeBytes // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -329,7 +332,7 @@ $DeviceProfileCopyWith<$Res>? get profile {
 /// @nodoc
 mixin _$InstalledApp {
 
- String get packageName; String get appName; String? get iconPath; String? get versionName; int? get versionCode; bool get isSystemApp;
+ String get packageName; String get appName; String? get iconPath; String? get versionName; int? get versionCode; bool get isSystemApp; int? get installedSizeBytes; bool get isSplitApk; String? get category;
 /// Create a copy of InstalledApp
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -342,16 +345,16 @@ $InstalledAppCopyWith<InstalledApp> get copyWith => _$InstalledAppCopyWithImpl<I
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstalledApp&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.iconPath, iconPath) || other.iconPath == iconPath)&&(identical(other.versionName, versionName) || other.versionName == versionName)&&(identical(other.versionCode, versionCode) || other.versionCode == versionCode)&&(identical(other.isSystemApp, isSystemApp) || other.isSystemApp == isSystemApp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InstalledApp&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.iconPath, iconPath) || other.iconPath == iconPath)&&(identical(other.versionName, versionName) || other.versionName == versionName)&&(identical(other.versionCode, versionCode) || other.versionCode == versionCode)&&(identical(other.isSystemApp, isSystemApp) || other.isSystemApp == isSystemApp)&&(identical(other.installedSizeBytes, installedSizeBytes) || other.installedSizeBytes == installedSizeBytes)&&(identical(other.isSplitApk, isSplitApk) || other.isSplitApk == isSplitApk)&&(identical(other.category, category) || other.category == category));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,packageName,appName,iconPath,versionName,versionCode,isSystemApp);
+int get hashCode => Object.hash(runtimeType,packageName,appName,iconPath,versionName,versionCode,isSystemApp,installedSizeBytes,isSplitApk,category);
 
 @override
 String toString() {
-  return 'InstalledApp(packageName: $packageName, appName: $appName, iconPath: $iconPath, versionName: $versionName, versionCode: $versionCode, isSystemApp: $isSystemApp)';
+  return 'InstalledApp(packageName: $packageName, appName: $appName, iconPath: $iconPath, versionName: $versionName, versionCode: $versionCode, isSystemApp: $isSystemApp, installedSizeBytes: $installedSizeBytes, isSplitApk: $isSplitApk, category: $category)';
 }
 
 
@@ -362,7 +365,7 @@ abstract mixin class $InstalledAppCopyWith<$Res>  {
   factory $InstalledAppCopyWith(InstalledApp value, $Res Function(InstalledApp) _then) = _$InstalledAppCopyWithImpl;
 @useResult
 $Res call({
- String packageName, String appName, String? iconPath, String? versionName, int? versionCode, bool isSystemApp
+ String packageName, String appName, String? iconPath, String? versionName, int? versionCode, bool isSystemApp, int? installedSizeBytes, bool isSplitApk, String? category
 });
 
 
@@ -379,7 +382,7 @@ class _$InstalledAppCopyWithImpl<$Res>
 
 /// Create a copy of InstalledApp
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? packageName = null,Object? appName = null,Object? iconPath = freezed,Object? versionName = freezed,Object? versionCode = freezed,Object? isSystemApp = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? packageName = null,Object? appName = null,Object? iconPath = freezed,Object? versionName = freezed,Object? versionCode = freezed,Object? isSystemApp = null,Object? installedSizeBytes = freezed,Object? isSplitApk = null,Object? category = freezed,}) {
   return _then(_self.copyWith(
 packageName: null == packageName ? _self.packageName : packageName // ignore: cast_nullable_to_non_nullable
 as String,appName: null == appName ? _self.appName : appName // ignore: cast_nullable_to_non_nullable
@@ -387,7 +390,10 @@ as String,iconPath: freezed == iconPath ? _self.iconPath : iconPath // ignore: c
 as String?,versionName: freezed == versionName ? _self.versionName : versionName // ignore: cast_nullable_to_non_nullable
 as String?,versionCode: freezed == versionCode ? _self.versionCode : versionCode // ignore: cast_nullable_to_non_nullable
 as int?,isSystemApp: null == isSystemApp ? _self.isSystemApp : isSystemApp // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,installedSizeBytes: freezed == installedSizeBytes ? _self.installedSizeBytes : installedSizeBytes // ignore: cast_nullable_to_non_nullable
+as int?,isSplitApk: null == isSplitApk ? _self.isSplitApk : isSplitApk // ignore: cast_nullable_to_non_nullable
+as bool,category: freezed == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -472,10 +478,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp,  int? installedSizeBytes,  bool isSplitApk,  String? category)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _InstalledApp() when $default != null:
-return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp);case _:
+return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp,_that.installedSizeBytes,_that.isSplitApk,_that.category);case _:
   return orElse();
 
 }
@@ -493,10 +499,10 @@ return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp,  int? installedSizeBytes,  bool isSplitApk,  String? category)  $default,) {final _that = this;
 switch (_that) {
 case _InstalledApp():
-return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp);case _:
+return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp,_that.installedSizeBytes,_that.isSplitApk,_that.category);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -513,10 +519,10 @@ return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String packageName,  String appName,  String? iconPath,  String? versionName,  int? versionCode,  bool isSystemApp,  int? installedSizeBytes,  bool isSplitApk,  String? category)?  $default,) {final _that = this;
 switch (_that) {
 case _InstalledApp() when $default != null:
-return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp);case _:
+return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName,_that.versionCode,_that.isSystemApp,_that.installedSizeBytes,_that.isSplitApk,_that.category);case _:
   return null;
 
 }
@@ -528,7 +534,7 @@ return $default(_that.packageName,_that.appName,_that.iconPath,_that.versionName
 @JsonSerializable()
 
 class _InstalledApp implements InstalledApp {
-  const _InstalledApp({required this.packageName, required this.appName, this.iconPath, this.versionName, this.versionCode, this.isSystemApp = false});
+  const _InstalledApp({required this.packageName, required this.appName, this.iconPath, this.versionName, this.versionCode, this.isSystemApp = false, this.installedSizeBytes, this.isSplitApk = false, this.category});
   factory _InstalledApp.fromJson(Map<String, dynamic> json) => _$InstalledAppFromJson(json);
 
 @override final  String packageName;
@@ -537,6 +543,9 @@ class _InstalledApp implements InstalledApp {
 @override final  String? versionName;
 @override final  int? versionCode;
 @override@JsonKey() final  bool isSystemApp;
+@override final  int? installedSizeBytes;
+@override@JsonKey() final  bool isSplitApk;
+@override final  String? category;
 
 /// Create a copy of InstalledApp
 /// with the given fields replaced by the non-null parameter values.
@@ -551,16 +560,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InstalledApp&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.iconPath, iconPath) || other.iconPath == iconPath)&&(identical(other.versionName, versionName) || other.versionName == versionName)&&(identical(other.versionCode, versionCode) || other.versionCode == versionCode)&&(identical(other.isSystemApp, isSystemApp) || other.isSystemApp == isSystemApp));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InstalledApp&&(identical(other.packageName, packageName) || other.packageName == packageName)&&(identical(other.appName, appName) || other.appName == appName)&&(identical(other.iconPath, iconPath) || other.iconPath == iconPath)&&(identical(other.versionName, versionName) || other.versionName == versionName)&&(identical(other.versionCode, versionCode) || other.versionCode == versionCode)&&(identical(other.isSystemApp, isSystemApp) || other.isSystemApp == isSystemApp)&&(identical(other.installedSizeBytes, installedSizeBytes) || other.installedSizeBytes == installedSizeBytes)&&(identical(other.isSplitApk, isSplitApk) || other.isSplitApk == isSplitApk)&&(identical(other.category, category) || other.category == category));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,packageName,appName,iconPath,versionName,versionCode,isSystemApp);
+int get hashCode => Object.hash(runtimeType,packageName,appName,iconPath,versionName,versionCode,isSystemApp,installedSizeBytes,isSplitApk,category);
 
 @override
 String toString() {
-  return 'InstalledApp(packageName: $packageName, appName: $appName, iconPath: $iconPath, versionName: $versionName, versionCode: $versionCode, isSystemApp: $isSystemApp)';
+  return 'InstalledApp(packageName: $packageName, appName: $appName, iconPath: $iconPath, versionName: $versionName, versionCode: $versionCode, isSystemApp: $isSystemApp, installedSizeBytes: $installedSizeBytes, isSplitApk: $isSplitApk, category: $category)';
 }
 
 
@@ -571,7 +580,7 @@ abstract mixin class _$InstalledAppCopyWith<$Res> implements $InstalledAppCopyWi
   factory _$InstalledAppCopyWith(_InstalledApp value, $Res Function(_InstalledApp) _then) = __$InstalledAppCopyWithImpl;
 @override @useResult
 $Res call({
- String packageName, String appName, String? iconPath, String? versionName, int? versionCode, bool isSystemApp
+ String packageName, String appName, String? iconPath, String? versionName, int? versionCode, bool isSystemApp, int? installedSizeBytes, bool isSplitApk, String? category
 });
 
 
@@ -588,7 +597,7 @@ class __$InstalledAppCopyWithImpl<$Res>
 
 /// Create a copy of InstalledApp
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? packageName = null,Object? appName = null,Object? iconPath = freezed,Object? versionName = freezed,Object? versionCode = freezed,Object? isSystemApp = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? packageName = null,Object? appName = null,Object? iconPath = freezed,Object? versionName = freezed,Object? versionCode = freezed,Object? isSystemApp = null,Object? installedSizeBytes = freezed,Object? isSplitApk = null,Object? category = freezed,}) {
   return _then(_InstalledApp(
 packageName: null == packageName ? _self.packageName : packageName // ignore: cast_nullable_to_non_nullable
 as String,appName: null == appName ? _self.appName : appName // ignore: cast_nullable_to_non_nullable
@@ -596,7 +605,10 @@ as String,iconPath: freezed == iconPath ? _self.iconPath : iconPath // ignore: c
 as String?,versionName: freezed == versionName ? _self.versionName : versionName // ignore: cast_nullable_to_non_nullable
 as String?,versionCode: freezed == versionCode ? _self.versionCode : versionCode // ignore: cast_nullable_to_non_nullable
 as int?,isSystemApp: null == isSystemApp ? _self.isSystemApp : isSystemApp // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,installedSizeBytes: freezed == installedSizeBytes ? _self.installedSizeBytes : installedSizeBytes // ignore: cast_nullable_to_non_nullable
+as int?,isSplitApk: null == isSplitApk ? _self.isSplitApk : isSplitApk // ignore: cast_nullable_to_non_nullable
+as bool,category: freezed == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

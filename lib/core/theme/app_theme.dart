@@ -19,7 +19,7 @@ abstract final class AppTheme {
         colorSchemeSeed: AppColors.primary,
         brightness: Brightness.light,
         appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 1,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -34,7 +34,7 @@ abstract final class AppTheme {
         colorSchemeSeed: AppColors.primaryDark,
         brightness: Brightness.dark,
         appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 1,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../models/clone_info.dart';
 import '../../../services/clone_engine_service.dart';
 
@@ -10,18 +11,38 @@ final appPickerProvider =
 
 final appSearchQueryProvider = StateProvider<String>((ref) => '');
 
+final appCategoryFilterProvider = StateProvider<String>((ref) => 'All');
+
 final filteredAppsProvider = Provider<AsyncValue<List<InstalledApp>>>((ref) {
   final query = ref.watch(appSearchQueryProvider).toLowerCase();
+  final category = ref.watch(appCategoryFilterProvider);
   final appsAsync = ref.watch(appPickerProvider);
 
   return appsAsync.whenData((apps) {
-    if (query.isEmpty) return apps;
-    return apps
-        .where((app) =>
-            app.appName.toLowerCase().contains(query) ||
-            app.packageName.toLowerCase().contains(query))
-        .toList();
+    var filtered = apps;
+
+    if (category != 'All') {
+      filtered = filtered
+          .where((app) =>
+              (app.category ?? 'other').toLowerCase() ==
+              category.toLowerCase())
+          .toList();
+    }
+
+    if (query.isNotEmpty) {
+      filtered = filtered
+          .where((app) =>
+              app.appName.toLowerCase().contains(query) ||
+              app.packageName.toLowerCase().contains(query))
+          .toList();
+    }
+
+    return filtered;
   });
+});
+
+final appCategoriesProvider = Provider<List<String>>((ref) {
+  return AppConstants.appCategories;
 });
 
 class AppPickerNotifier extends AsyncNotifier<List<InstalledApp>> {
