@@ -195,6 +195,69 @@ class PigeonBatteryInfo {
   });
 }
 
+/// Memory snapshot from the optimization layer.
+class PigeonMemorySnapshot {
+  final int totalDeviceRamMb;
+  final int availableRamMb;
+  final int engineNativeHeapMb;
+  final int engineJavaHeapMb;
+  final int cloneProcessCount;
+  final int estimatedCloneOverheadMb;
+  final bool isLowMemory;
+  final int recommendedMaxClones;
+
+  PigeonMemorySnapshot({
+    required this.totalDeviceRamMb,
+    required this.availableRamMb,
+    required this.engineNativeHeapMb,
+    required this.engineJavaHeapMb,
+    required this.cloneProcessCount,
+    required this.estimatedCloneOverheadMb,
+    required this.isLowMemory,
+    required this.recommendedMaxClones,
+  });
+}
+
+/// Security check result.
+class PigeonSecurityStatus {
+  final bool signatureValid;
+  final bool debuggerAttached;
+  final bool deviceRooted;
+  final bool isEmulator;
+  final bool nativeLibsIntact;
+  final bool overallSecure;
+
+  PigeonSecurityStatus({
+    required this.signatureValid,
+    required this.debuggerAttached,
+    required this.deviceRooted,
+    required this.isEmulator,
+    required this.nativeLibsIntact,
+    required this.overallSecure,
+  });
+}
+
+/// Performance metrics.
+class PigeonPerformanceMetrics {
+  final int avgColdLaunchMs;
+  final int avgWarmLaunchMs;
+  final int avgProfileLoadMs;
+  final int totalLaunches;
+  final int batteryLevel;
+  final bool isCharging;
+  final String powerRecommendation;
+
+  PigeonPerformanceMetrics({
+    required this.avgColdLaunchMs,
+    required this.avgWarmLaunchMs,
+    required this.avgProfileLoadMs,
+    required this.totalLaunches,
+    required this.batteryLevel,
+    required this.isCharging,
+    required this.powerRecommendation,
+  });
+}
+
 /// Host API — Dart calls into native Android code.
 @HostApi()
 abstract class CloneEngineApi {
@@ -288,6 +351,29 @@ abstract class CloneEngineApi {
 
   /// Stop foreground service.
   void stopForegroundService();
+
+  /// Get memory snapshot.
+  PigeonMemorySnapshot getMemorySnapshot();
+
+  /// Run security check.
+  PigeonSecurityStatus performSecurityCheck();
+
+  /// Get performance metrics.
+  PigeonPerformanceMetrics getPerformanceMetrics();
+
+  /// Check if it's safe to launch another clone.
+  bool canLaunchClone();
+
+  /// Request garbage collection.
+  void requestGc();
+
+  /// Encrypt clone data.
+  @async
+  bool encryptCloneData(String cloneId);
+
+  /// Securely delete clone data.
+  @async
+  bool secureDeleteCloneData(String cloneId);
 }
 
 /// Flutter API — native Android calls into Dart.

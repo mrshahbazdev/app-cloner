@@ -20,6 +20,11 @@ import com.titanclone.titan_clone.compat.VersionCompatHandler
 import com.titanclone.titan_clone.service.BackgroundProcessManager
 import com.titanclone.titan_clone.service.CloneForegroundService
 import com.titanclone.titan_clone.notification.CloneNotificationManager
+import com.titanclone.titan_clone.optimization.MemoryOptimizer
+import com.titanclone.titan_clone.optimization.StartupOptimizer
+import com.titanclone.titan_clone.optimization.BatteryOptimizer
+import com.titanclone.titan_clone.security.CodeProtection
+import com.titanclone.titan_clone.security.DataSecurity
 
 class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private lateinit var context: Context
@@ -36,6 +41,11 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private lateinit var versionCompat: VersionCompatHandler
     private lateinit var backgroundManager: BackgroundProcessManager
     private lateinit var notificationManager: CloneNotificationManager
+    private lateinit var memoryOptimizer: MemoryOptimizer
+    private lateinit var startupOptimizer: StartupOptimizer
+    private lateinit var batteryOptimizer: BatteryOptimizer
+    private lateinit var codeProtection: CodeProtection
+    private lateinit var dataSecurity: DataSecurity
 
     private var eventSink: EventChannel.EventSink? = null
     private var flutterApi: CloneEventApi? = null
@@ -65,6 +75,13 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         backgroundManager = BackgroundProcessManager(context)
         notificationManager = CloneNotificationManager(context)
         notificationManager.createForegroundChannel()
+        memoryOptimizer = MemoryOptimizer(context)
+        startupOptimizer = StartupOptimizer(context)
+        batteryOptimizer = BatteryOptimizer(context)
+        codeProtection = CodeProtection(context)
+        dataSecurity = DataSecurity(context)
+        context.registerComponentCallbacks(memoryOptimizer)
+        startupOptimizer.markEngineInitStart()
 
         CloneEngineApi.setUp(binding.binaryMessenger, this)
         flutterApi = CloneEventApi(binding.binaryMessenger)
@@ -512,6 +529,72 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun stopForegroundService() {
         CloneForegroundService.stop(context)
+    }
+
+    override fun getMemorySnapshot(): PigeonMemorySnapshot {
+        val snapshot = memoryOptimizer.getMemorySnapshot()
+        return PigeonMemorySnapshot(
+            totalDeviceRamMb = snapshot.totalDeviceRamMb,
+            availableRamMb = snapshot.availableRamMb,
+            engineNativeHeapMb = snapshot.engineNativeHeapMb,
+            engineJavaHeapMb = snapshot.engineJavaHeapMb,
+            cloneProcessCount = snapshot.cloneProcessCount.toLong(),
+            estimatedCloneOverheadMb = snapshot.estimatedCloneOverheadMb,
+            isLowMemory = snapshot.isLowMemory,
+            recommendedMaxClones = memoryOptimizer.getRecommendedMaxClones().toLong()
+        )
+    }
+
+    override fun performSecurityCheck(): PigeonSecurityStatus {
+        val status = codeProtection.performSecurityCheck()
+        return PigeonSecurityStatus(
+            signatureValid = status.signatureValid,
+            debuggerAttached = status.debuggerAttached,
+            deviceRooted = status.deviceRooted,
+            isEmulator = status.isEmulator,
+            nativeLibsIntact = status.nativeLibsIntact,
+            overallSecure = status.overallSecure
+        )
+    }
+
+    override fun getPerformanceMetrics(): PigeonPerformanceMetrics {
+        val timings = startupOptimizer.getAverageTimings()
+        val battery = batteryOptimizer.getBatteryStatus()
+        return PigeonPerformanceMetrics(
+            avgColdLaunchMs = (timings["avgColdLaunchMs"] ?: 0L),
+            avgWarmLaunchMs = (timings["avgWarmLaunchMs"] ?: 0L),
+            avgProfileLoadMs = (timings["avgProfileLoadMs"] ?: 0L),
+            totalLaunches = (timings["totalLaunches"] ?: 0L),
+            batteryLevel = battery.level.toLong(),
+            isCharging = battery.isCharging,
+            powerRecommendation = battery.recommendation.name
+        )
+    }
+
+    override fun canLaunchClone(): Boolean {
+        return memoryOptimizer.canLaunchClone()
+    }
+
+    override fun requestGc() {
+        memoryOptimizer.requestGc()
+    }
+
+    override fun encryptCloneData(cloneId: String, callback: (Result<Boolean>) -> Unit) {
+        try {
+            val result = dataSecurity.encryptCloneData(cloneId)
+            callback(Result.success(result))
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+        }
+    }
+
+    override fun secureDeleteCloneData(cloneId: String, callback: (Result<Boolean>) -> Unit) {
+        try {
+            val result = dataSecurity.secureDeleteCloneData(cloneId)
+            callback(Result.success(result))
+        } catch (e: Exception) {
+            callback(Result.failure(e))
+        }
     }
 
     private fun getAppLabel(packageName: String): String {
