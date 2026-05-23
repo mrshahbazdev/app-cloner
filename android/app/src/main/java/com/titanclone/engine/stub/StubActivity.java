@@ -4,7 +4,9 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -485,7 +487,31 @@ public class StubActivity extends Activity {
                     }
                 }
 
-                // Removed Theme_DeviceDefault to allow the cloned app to use its own Theme (like Theme.AppCompat)
+                // Apply the target activity's theme from the original manifest.
+                // Without this, AppCompatActivity crashes because StubActivity's
+                // manifest entry uses a platform theme, not Theme.AppCompat.
+                try {
+                    android.content.ComponentName comp = new android.content.ComponentName(
+                            packageName, activity.getClass().getName());
+                    ActivityInfo actInfo = VirtualCore.get().getContext()
+                            .getPackageManager().getActivityInfo(comp, 0);
+                    int themeResId = actInfo.theme;
+                    if (themeResId == 0) {
+                        themeResId = actInfo.applicationInfo.theme;
+                    }
+                    if (themeResId != 0) {
+                        activity.setTheme(themeResId);
+                    }
+                } catch (PackageManager.NameNotFoundException e) {
+                    // Activity not in original manifest — try application-level theme
+                    try {
+                        ApplicationInfo appInfo = VirtualCore.get().getContext()
+                                .getPackageManager().getApplicationInfo(packageName, 0);
+                        if (appInfo.theme != 0) {
+                            activity.setTheme(appInfo.theme);
+                        }
+                    } catch (PackageManager.NameNotFoundException ignore) {}
+                }
 
                 if (sTargetApp != null) {
                     try {
