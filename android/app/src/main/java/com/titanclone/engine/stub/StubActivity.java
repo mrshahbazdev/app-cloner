@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -187,18 +188,33 @@ public class StubActivity extends Activity {
                             return super.newActivity(cl, className, intent);
                         }
 
-                        // Set up DexClassLoader
-                        File dexOptDir = new File(VirtualCore.get().getContext().getFilesDir(), "dex_opt");
-                        if (!dexOptDir.exists()) {
-                            dexOptDir.mkdirs();
+                        // Build classpath: base.apk + all split APKs
+                        File pkgDir = VirtualCore.get().getStorage().getPackageApkDir(targetPackage);
+                        StringBuilder dexPath = new StringBuilder(apkFile.getAbsolutePath());
+                        File[] splitApks = pkgDir.listFiles((dir, name) ->
+                                name.endsWith(".apk") && !name.equals("base.apk"));
+                        if (splitApks != null) {
+                            for (File split : splitApks) {
+                                dexPath.append(File.pathSeparator).append(split.getAbsolutePath());
+                            }
                         }
 
-                        File nativeLibDir = new File(VirtualCore.get().getStorage().getCloneDataDir(targetPackage, userId), "lib");
+                        File nativeLibDir = new File(pkgDir, "lib");
+
+                        // Also include original app's native lib dir as fallback
+                        String nativeLibPath = nativeLibDir.getAbsolutePath();
+                        try {
+                            ApplicationInfo srcInfo = VirtualCore.get().getContext()
+                                    .getPackageManager().getApplicationInfo(targetPackage, 0);
+                            if (srcInfo.nativeLibraryDir != null) {
+                                nativeLibPath += File.pathSeparator + srcInfo.nativeLibraryDir;
+                            }
+                        } catch (Exception ignore) {}
 
                         // Use DelegateLastClassLoader to prioritize cloned app's classes over the host engine's classes
                         final ClassLoader customLoader = new dalvik.system.DelegateLastClassLoader(
-                                apkFile.getAbsolutePath(),
-                                nativeLibDir.getAbsolutePath(),
+                                dexPath.toString(),
+                                nativeLibPath,
                                 cl
                         );
 
@@ -414,7 +430,20 @@ public class StubActivity extends Activity {
                 return intent; 
             }
             if (intent.getComponent().getPackageName().equals(EngineConfig.HOST_PACKAGE)) {
-                return intent; 
+                // Check if the target class actually exists in the host app.
+                // Clone apps run inside the host process and their Context returns
+                // the host package name, so their internal activity intents arrive
+                // here with package=HOST but class=clone activity.  If the class is
+                // not loadable from the host classloader, it belongs to a clone and
+                // must be intercepted.
+                try {
+                    Class.forName(intent.getComponent().getClassName());
+                    return intent; // genuine host activity
+                } catch (ClassNotFoundException e) {
+                    // not a host class — fall through to wrap as clone activity
+                    Log.d(TAG, "Intercepting clone activity with host package: "
+                            + intent.getComponent().getClassName());
+                }
             }
             
             int processIndex = 0;
