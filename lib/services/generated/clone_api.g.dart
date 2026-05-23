@@ -26,8 +26,8 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
 }
 
 /// Represents an installed app on the device.
-class InstalledAppData {
-  InstalledAppData({
+class InstalledApp {
+  InstalledApp({
     required this.packageName,
     required this.appName,
     this.iconPath,
@@ -71,9 +71,9 @@ class InstalledAppData {
     ];
   }
 
-  static InstalledAppData decode(Object result) {
+  static InstalledApp decode(Object result) {
     result as List<Object?>;
-    return InstalledAppData(
+    return InstalledApp(
       packageName: result[0]! as String,
       appName: result[1]! as String,
       iconPath: result[2] as String?,
@@ -88,8 +88,8 @@ class InstalledAppData {
 }
 
 /// Represents a clone instance.
-class CloneInfoData {
-  CloneInfoData({
+class CloneInfo {
+  CloneInfo({
     required this.id,
     required this.packageName,
     required this.appName,
@@ -141,9 +141,9 @@ class CloneInfoData {
     ];
   }
 
-  static CloneInfoData decode(Object result) {
+  static CloneInfo decode(Object result) {
     result as List<Object?>;
-    return CloneInfoData(
+    return CloneInfo(
       id: result[0]! as String,
       packageName: result[1]! as String,
       appName: result[2]! as String,
@@ -160,8 +160,8 @@ class CloneInfoData {
 }
 
 /// Represents a virtual device profile.
-class DeviceProfileData {
-  DeviceProfileData({
+class DeviceProfile {
+  DeviceProfile({
     required this.id,
     required this.name,
     required this.model,
@@ -261,9 +261,9 @@ class DeviceProfileData {
     ];
   }
 
-  static DeviceProfileData decode(Object result) {
+  static DeviceProfile decode(Object result) {
     result as List<Object?>;
-    return DeviceProfileData(
+    return DeviceProfile(
       id: result[0]! as String,
       name: result[1]! as String,
       model: result[2]! as String,
@@ -292,8 +292,8 @@ class DeviceProfileData {
 }
 
 /// Storage information for a clone.
-class StorageInfoData {
-  StorageInfoData({
+class StorageInfo {
+  StorageInfo({
     required this.cloneId,
     required this.totalSizeBytes,
     required this.dataSizeBytes,
@@ -317,9 +317,9 @@ class StorageInfoData {
     ];
   }
 
-  static StorageInfoData decode(Object result) {
+  static StorageInfo decode(Object result) {
     result as List<Object?>;
-    return StorageInfoData(
+    return StorageInfo(
       cloneId: result[0]! as String,
       totalSizeBytes: result[1]! as int,
       dataSizeBytes: result[2]! as int,
@@ -329,8 +329,8 @@ class StorageInfoData {
 }
 
 /// Engine status information.
-class EngineStatusData {
-  EngineStatusData({
+class EngineStatus {
+  EngineStatus({
     required this.initialized,
     required this.runningCloneCount,
     required this.totalCloneCount,
@@ -354,9 +354,9 @@ class EngineStatusData {
     ];
   }
 
-  static EngineStatusData decode(Object result) {
+  static EngineStatus decode(Object result) {
     result as List<Object?>;
-    return EngineStatusData(
+    return EngineStatus(
       initialized: result[0]! as bool,
       runningCloneCount: result[1]! as int,
       totalCloneCount: result[2]! as int,
@@ -366,8 +366,8 @@ class EngineStatusData {
 }
 
 /// GMS availability state.
-class GmsStateData {
-  GmsStateData({
+class GmsState {
+  GmsState({
     required this.gmsAvailable,
     this.gmsVersion,
     this.playStoreVersion,
@@ -399,9 +399,9 @@ class GmsStateData {
     ];
   }
 
-  static GmsStateData decode(Object result) {
+  static GmsState decode(Object result) {
     result as List<Object?>;
-    return GmsStateData(
+    return GmsState(
       gmsAvailable: result[0]! as bool,
       gmsVersion: result[1] as String?,
       playStoreVersion: result[2] as String?,
@@ -413,8 +413,8 @@ class GmsStateData {
 }
 
 /// Device compatibility report.
-class CompatReportData {
-  CompatReportData({
+class CompatReport {
+  CompatReport({
     required this.apiLevel,
     required this.androidVersion,
     required this.isSupported,
@@ -446,9 +446,9 @@ class CompatReportData {
     ];
   }
 
-  static CompatReportData decode(Object result) {
+  static CompatReport decode(Object result) {
     result as List<Object?>;
-    return CompatReportData(
+    return CompatReport(
       apiLevel: result[0]! as int,
       androidVersion: result[1]! as String,
       isSupported: result[2]! as bool,
@@ -460,8 +460,8 @@ class CompatReportData {
 }
 
 /// Battery optimization info.
-class BatteryInfoData {
-  BatteryInfoData({
+class BatteryInfo {
+  BatteryInfo({
     required this.isIgnoringOptimization,
     required this.oemBrand,
     this.oemIssue,
@@ -481,9 +481,9 @@ class BatteryInfoData {
     ];
   }
 
-  static BatteryInfoData decode(Object result) {
+  static BatteryInfo decode(Object result) {
     result as List<Object?>;
-    return BatteryInfoData(
+    return BatteryInfo(
       isIgnoringOptimization: result[0]! as bool,
       oemBrand: result[1]! as String,
       oemIssue: result[2] as String?,
@@ -492,8 +492,8 @@ class BatteryInfoData {
 }
 
 /// Memory snapshot from the optimization layer.
-class MemorySnapshotData {
-  MemorySnapshotData({
+class MemorySnapshot {
+  MemorySnapshot({
     required this.totalDeviceRamMb,
     required this.availableRamMb,
     required this.engineNativeHeapMb,
@@ -533,9 +533,9 @@ class MemorySnapshotData {
     ];
   }
 
-  static MemorySnapshotData decode(Object result) {
+  static MemorySnapshot decode(Object result) {
     result as List<Object?>;
-    return MemorySnapshotData(
+    return MemorySnapshot(
       totalDeviceRamMb: result[0]! as int,
       availableRamMb: result[1]! as int,
       engineNativeHeapMb: result[2]! as int,
@@ -549,8 +549,8 @@ class MemorySnapshotData {
 }
 
 /// Security check result.
-class SecurityStatusData {
-  SecurityStatusData({
+class SecurityStatus {
+  SecurityStatus({
     required this.signatureValid,
     required this.debuggerAttached,
     required this.deviceRooted,
@@ -582,9 +582,9 @@ class SecurityStatusData {
     ];
   }
 
-  static SecurityStatusData decode(Object result) {
+  static SecurityStatus decode(Object result) {
     result as List<Object?>;
-    return SecurityStatusData(
+    return SecurityStatus(
       signatureValid: result[0]! as bool,
       debuggerAttached: result[1]! as bool,
       deviceRooted: result[2]! as bool,
@@ -596,8 +596,8 @@ class SecurityStatusData {
 }
 
 /// Performance metrics.
-class PerformanceMetricsData {
-  PerformanceMetricsData({
+class PerformanceMetrics {
+  PerformanceMetrics({
     required this.avgColdLaunchMs,
     required this.avgWarmLaunchMs,
     required this.avgProfileLoadMs,
@@ -633,9 +633,9 @@ class PerformanceMetricsData {
     ];
   }
 
-  static PerformanceMetricsData decode(Object result) {
+  static PerformanceMetrics decode(Object result) {
     result as List<Object?>;
-    return PerformanceMetricsData(
+    return PerformanceMetrics(
       avgColdLaunchMs: result[0]! as int,
       avgWarmLaunchMs: result[1]! as int,
       avgProfileLoadMs: result[2]! as int,
@@ -655,37 +655,37 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is InstalledAppData) {
+    }    else if (value is InstalledApp) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
-    }    else if (value is CloneInfoData) {
+    }    else if (value is CloneInfo) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    }    else if (value is DeviceProfileData) {
+    }    else if (value is DeviceProfile) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is StorageInfoData) {
+    }    else if (value is StorageInfo) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    }    else if (value is EngineStatusData) {
+    }    else if (value is EngineStatus) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    }    else if (value is GmsStateData) {
+    }    else if (value is GmsState) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is CompatReportData) {
+    }    else if (value is CompatReport) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is BatteryInfoData) {
+    }    else if (value is BatteryInfo) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
-    }    else if (value is MemorySnapshotData) {
+    }    else if (value is MemorySnapshot) {
       buffer.putUint8(137);
       writeValue(buffer, value.encode());
-    }    else if (value is SecurityStatusData) {
+    }    else if (value is SecurityStatus) {
       buffer.putUint8(138);
       writeValue(buffer, value.encode());
-    }    else if (value is PerformanceMetricsData) {
+    }    else if (value is PerformanceMetrics) {
       buffer.putUint8(139);
       writeValue(buffer, value.encode());
     } else {
@@ -697,27 +697,27 @@ class _PigeonCodec extends StandardMessageCodec {
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
       case 129: 
-        return InstalledAppData.decode(readValue(buffer)!);
+        return InstalledApp.decode(readValue(buffer)!);
       case 130: 
-        return CloneInfoData.decode(readValue(buffer)!);
+        return CloneInfo.decode(readValue(buffer)!);
       case 131: 
-        return DeviceProfileData.decode(readValue(buffer)!);
+        return DeviceProfile.decode(readValue(buffer)!);
       case 132: 
-        return StorageInfoData.decode(readValue(buffer)!);
+        return StorageInfo.decode(readValue(buffer)!);
       case 133: 
-        return EngineStatusData.decode(readValue(buffer)!);
+        return EngineStatus.decode(readValue(buffer)!);
       case 134: 
-        return GmsStateData.decode(readValue(buffer)!);
+        return GmsState.decode(readValue(buffer)!);
       case 135: 
-        return CompatReportData.decode(readValue(buffer)!);
+        return CompatReport.decode(readValue(buffer)!);
       case 136: 
-        return BatteryInfoData.decode(readValue(buffer)!);
+        return BatteryInfo.decode(readValue(buffer)!);
       case 137: 
-        return MemorySnapshotData.decode(readValue(buffer)!);
+        return MemorySnapshot.decode(readValue(buffer)!);
       case 138: 
-        return SecurityStatusData.decode(readValue(buffer)!);
+        return SecurityStatus.decode(readValue(buffer)!);
       case 139: 
-        return PerformanceMetricsData.decode(readValue(buffer)!);
+        return PerformanceMetrics.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -795,7 +795,7 @@ class CloneEngineApi {
   }
 
   /// Get engine status information.
-  Future<EngineStatusData> getEngineStatus() async {
+  Future<EngineStatus> getEngineStatus() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getEngineStatus$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -818,12 +818,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as EngineStatusData?)!;
+      return (pigeonVar_replyList[0] as EngineStatus?)!;
     }
   }
 
   /// Get all installed apps available for cloning.
-  Future<List<InstalledAppData>> getInstalledApps() async {
+  Future<List<InstalledApp>> getInstalledApps() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getInstalledApps$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -846,12 +846,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<InstalledAppData>();
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<InstalledApp>();
     }
   }
 
   /// Create a new clone of an app.
-  Future<CloneInfoData> createClone(String packageName, int userId, String? profilePreset) async {
+  Future<CloneInfo> createClone(String packageName, int userId, String? profilePreset) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.createClone$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -874,7 +874,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as CloneInfoData?)!;
+      return (pigeonVar_replyList[0] as CloneInfo?)!;
     }
   }
 
@@ -963,7 +963,7 @@ class CloneEngineApi {
   }
 
   /// Get all created clones.
-  Future<List<CloneInfoData>> getClones() async {
+  Future<List<CloneInfo>> getClones() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getClones$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -986,7 +986,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<CloneInfoData>();
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<CloneInfo>();
     }
   }
 
@@ -1019,7 +1019,7 @@ class CloneEngineApi {
   }
 
   /// Get virtual profile for a clone.
-  Future<DeviceProfileData?> getCloneProfile(String cloneId) async {
+  Future<DeviceProfile?> getCloneProfile(String cloneId) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getCloneProfile$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1037,12 +1037,12 @@ class CloneEngineApi {
         details: pigeonVar_replyList[2],
       );
     } else {
-      return (pigeonVar_replyList[0] as DeviceProfileData?);
+      return (pigeonVar_replyList[0] as DeviceProfile?);
     }
   }
 
   /// Update virtual profile for a clone.
-  Future<bool> updateProfile(String cloneId, DeviceProfileData profile) async {
+  Future<bool> updateProfile(String cloneId, DeviceProfile profile) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.updateProfile$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1070,7 +1070,7 @@ class CloneEngineApi {
   }
 
   /// Reset virtual profile to new random values.
-  Future<DeviceProfileData> resetCloneProfile(String cloneId) async {
+  Future<DeviceProfile> resetCloneProfile(String cloneId) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.resetCloneProfile$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1093,12 +1093,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as DeviceProfileData?)!;
+      return (pigeonVar_replyList[0] as DeviceProfile?)!;
     }
   }
 
   /// Get storage info for a clone.
-  Future<StorageInfoData> getCloneStorageInfo(String cloneId) async {
+  Future<StorageInfo> getCloneStorageInfo(String cloneId) async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getCloneStorageInfo$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1121,7 +1121,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as StorageInfoData?)!;
+      return (pigeonVar_replyList[0] as StorageInfo?)!;
     }
   }
 
@@ -1238,7 +1238,7 @@ class CloneEngineApi {
   }
 
   /// Get GMS availability state.
-  Future<GmsStateData> getGmsState() async {
+  Future<GmsState> getGmsState() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getGmsState$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1261,7 +1261,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as GmsStateData?)!;
+      return (pigeonVar_replyList[0] as GmsState?)!;
     }
   }
 
@@ -1317,7 +1317,7 @@ class CloneEngineApi {
   }
 
   /// Check device compatibility.
-  Future<CompatReportData> checkCompatibility() async {
+  Future<CompatReport> checkCompatibility() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.checkCompatibility$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1340,12 +1340,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as CompatReportData?)!;
+      return (pigeonVar_replyList[0] as CompatReport?)!;
     }
   }
 
   /// Get battery optimization info.
-  Future<BatteryInfoData> getBatteryOptimizationInfo() async {
+  Future<BatteryInfo> getBatteryOptimizationInfo() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getBatteryOptimizationInfo$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1368,7 +1368,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as BatteryInfoData?)!;
+      return (pigeonVar_replyList[0] as BatteryInfo?)!;
     }
   }
 
@@ -1419,7 +1419,7 @@ class CloneEngineApi {
   }
 
   /// Get memory snapshot.
-  Future<MemorySnapshotData> getMemorySnapshot() async {
+  Future<MemorySnapshot> getMemorySnapshot() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getMemorySnapshot$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1442,12 +1442,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as MemorySnapshotData?)!;
+      return (pigeonVar_replyList[0] as MemorySnapshot?)!;
     }
   }
 
   /// Run security check.
-  Future<SecurityStatusData> performSecurityCheck() async {
+  Future<SecurityStatus> performSecurityCheck() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.performSecurityCheck$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1470,12 +1470,12 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as SecurityStatusData?)!;
+      return (pigeonVar_replyList[0] as SecurityStatus?)!;
     }
   }
 
   /// Get performance metrics.
-  Future<PerformanceMetricsData> getPerformanceMetrics() async {
+  Future<PerformanceMetrics> getPerformanceMetrics() async {
     final String pigeonVar_channelName = 'dev.flutter.pigeon.titan_clone.CloneEngineApi.getPerformanceMetrics$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
@@ -1498,7 +1498,7 @@ class CloneEngineApi {
         message: 'Host platform returned null value for non-null return value.',
       );
     } else {
-      return (pigeonVar_replyList[0] as PerformanceMetricsData?)!;
+      return (pigeonVar_replyList[0] as PerformanceMetrics?)!;
     }
   }
 

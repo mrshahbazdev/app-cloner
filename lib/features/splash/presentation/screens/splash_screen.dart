@@ -46,8 +46,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final engineState = ref.watch(engineInitProvider);
 
     ref.listen(engineInitProvider, (_, next) {
-      next.whenData((initialized) {
-        if (initialized && mounted) {
+      next.whenData((_) {
+        if (mounted) {
           final router = GoRouter.of(context);
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
