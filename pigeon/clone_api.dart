@@ -8,7 +8,7 @@ import 'package:pigeon/pigeon.dart';
 ))
 
 /// Represents an installed app on the device.
-class PigeonInstalledApp {
+class InstalledAppData {
   final String packageName;
   final String appName;
   final String? iconPath;
@@ -19,7 +19,7 @@ class PigeonInstalledApp {
   final bool isSplitApk;
   final String? category;
 
-  PigeonInstalledApp({
+  InstalledAppData({
     required this.packageName,
     required this.appName,
     this.iconPath,
@@ -33,7 +33,7 @@ class PigeonInstalledApp {
 }
 
 /// Represents a clone instance.
-class PigeonCloneInfo {
+class CloneInfoData {
   final String id;
   final String packageName;
   final String appName;
@@ -46,7 +46,7 @@ class PigeonCloneInfo {
   final int? lastLaunchedMs;
   final int? storageSizeBytes;
 
-  PigeonCloneInfo({
+  CloneInfoData({
     required this.id,
     required this.packageName,
     required this.appName,
@@ -62,7 +62,7 @@ class PigeonCloneInfo {
 }
 
 /// Represents a virtual device profile.
-class PigeonDeviceProfile {
+class DeviceProfileData {
   final String id;
   final String name;
   final String model;
@@ -87,7 +87,7 @@ class PigeonDeviceProfile {
   final int? proxyPort;
   final String? proxyType;
 
-  PigeonDeviceProfile({
+  DeviceProfileData({
     required this.id,
     required this.name,
     required this.model,
@@ -115,13 +115,13 @@ class PigeonDeviceProfile {
 }
 
 /// Storage information for a clone.
-class PigeonStorageInfo {
+class StorageInfoData {
   final String cloneId;
   final int totalSizeBytes;
   final int dataSizeBytes;
   final int cacheSizeBytes;
 
-  PigeonStorageInfo({
+  StorageInfoData({
     required this.cloneId,
     required this.totalSizeBytes,
     required this.dataSizeBytes,
@@ -130,13 +130,13 @@ class PigeonStorageInfo {
 }
 
 /// Engine status information.
-class PigeonEngineStatus {
+class EngineStatusData {
   final bool initialized;
   final int runningCloneCount;
   final int totalCloneCount;
   final int memoryUsageMb;
 
-  PigeonEngineStatus({
+  EngineStatusData({
     required this.initialized,
     required this.runningCloneCount,
     required this.totalCloneCount,
@@ -145,7 +145,7 @@ class PigeonEngineStatus {
 }
 
 /// GMS availability state.
-class PigeonGmsState {
+class GmsStateData {
   final bool gmsAvailable;
   final String? gmsVersion;
   final String? playStoreVersion;
@@ -153,7 +153,7 @@ class PigeonGmsState {
   final int maxPlayStoreClones;
   final int activePlayStoreClones;
 
-  PigeonGmsState({
+  GmsStateData({
     required this.gmsAvailable,
     this.gmsVersion,
     this.playStoreVersion,
@@ -164,7 +164,7 @@ class PigeonGmsState {
 }
 
 /// Device compatibility report.
-class PigeonCompatReport {
+class CompatReportData {
   final int apiLevel;
   final String androidVersion;
   final bool isSupported;
@@ -172,7 +172,7 @@ class PigeonCompatReport {
   final List<String> missingPermissions;
   final List<String> recommendations;
 
-  PigeonCompatReport({
+  CompatReportData({
     required this.apiLevel,
     required this.androidVersion,
     required this.isSupported,
@@ -183,12 +183,12 @@ class PigeonCompatReport {
 }
 
 /// Battery optimization info.
-class PigeonBatteryInfo {
+class BatteryInfoData {
   final bool isIgnoringOptimization;
   final String oemBrand;
   final String? oemIssue;
 
-  PigeonBatteryInfo({
+  BatteryInfoData({
     required this.isIgnoringOptimization,
     required this.oemBrand,
     this.oemIssue,
@@ -196,7 +196,7 @@ class PigeonBatteryInfo {
 }
 
 /// Memory snapshot from the optimization layer.
-class PigeonMemorySnapshot {
+class MemorySnapshotData {
   final int totalDeviceRamMb;
   final int availableRamMb;
   final int engineNativeHeapMb;
@@ -206,7 +206,7 @@ class PigeonMemorySnapshot {
   final bool isLowMemory;
   final int recommendedMaxClones;
 
-  PigeonMemorySnapshot({
+  MemorySnapshotData({
     required this.totalDeviceRamMb,
     required this.availableRamMb,
     required this.engineNativeHeapMb,
@@ -219,7 +219,7 @@ class PigeonMemorySnapshot {
 }
 
 /// Security check result.
-class PigeonSecurityStatus {
+class SecurityStatusData {
   final bool signatureValid;
   final bool debuggerAttached;
   final bool deviceRooted;
@@ -227,7 +227,7 @@ class PigeonSecurityStatus {
   final bool nativeLibsIntact;
   final bool overallSecure;
 
-  PigeonSecurityStatus({
+  SecurityStatusData({
     required this.signatureValid,
     required this.debuggerAttached,
     required this.deviceRooted,
@@ -238,7 +238,7 @@ class PigeonSecurityStatus {
 }
 
 /// Performance metrics.
-class PigeonPerformanceMetrics {
+class PerformanceMetricsData {
   final int avgColdLaunchMs;
   final int avgWarmLaunchMs;
   final int avgProfileLoadMs;
@@ -247,7 +247,7 @@ class PigeonPerformanceMetrics {
   final bool isCharging;
   final String powerRecommendation;
 
-  PigeonPerformanceMetrics({
+  PerformanceMetricsData({
     required this.avgColdLaunchMs,
     required this.avgWarmLaunchMs,
     required this.avgProfileLoadMs,
@@ -269,15 +269,15 @@ abstract class CloneEngineApi {
   bool isEngineReady();
 
   /// Get engine status information.
-  PigeonEngineStatus getEngineStatus();
+  EngineStatusData getEngineStatus();
 
   /// Get all installed apps available for cloning.
   @async
-  List<PigeonInstalledApp> getInstalledApps();
+  List<InstalledAppData> getInstalledApps();
 
   /// Create a new clone of an app.
   @async
-  PigeonCloneInfo createClone(String packageName, int userId, String? profilePreset);
+  CloneInfoData createClone(String packageName, int userId, String? profilePreset);
 
   /// Launch a clone.
   @async
@@ -293,7 +293,7 @@ abstract class CloneEngineApi {
 
   /// Get all created clones.
   @async
-  List<PigeonCloneInfo> getClones();
+  List<CloneInfoData> getClones();
 
   /// Get the status of a specific clone.
   @async
@@ -301,19 +301,19 @@ abstract class CloneEngineApi {
 
   /// Get virtual profile for a clone.
   @async
-  PigeonDeviceProfile? getCloneProfile(String cloneId);
+  DeviceProfileData? getCloneProfile(String cloneId);
 
   /// Update virtual profile for a clone.
   @async
-  bool updateProfile(String cloneId, PigeonDeviceProfile profile);
+  bool updateProfile(String cloneId, DeviceProfileData profile);
 
   /// Reset virtual profile to new random values.
   @async
-  PigeonDeviceProfile resetCloneProfile(String cloneId);
+  DeviceProfileData resetCloneProfile(String cloneId);
 
   /// Get storage info for a clone.
   @async
-  PigeonStorageInfo getCloneStorageInfo(String cloneId);
+  StorageInfoData getCloneStorageInfo(String cloneId);
 
   /// Clear a clone's cache.
   @async
@@ -330,7 +330,7 @@ abstract class CloneEngineApi {
   bool setMemoryLimitPerClone(int limitMb);
 
   /// Get GMS availability state.
-  PigeonGmsState getGmsState();
+  GmsStateData getGmsState();
 
   /// Create a Play Store clone with device preset.
   @async
@@ -341,10 +341,10 @@ abstract class CloneEngineApi {
   bool deletePlayStoreClone(String cloneId);
 
   /// Check device compatibility.
-  PigeonCompatReport checkCompatibility();
+  CompatReportData checkCompatibility();
 
   /// Get battery optimization info.
-  PigeonBatteryInfo getBatteryOptimizationInfo();
+  BatteryInfoData getBatteryOptimizationInfo();
 
   /// Start foreground service.
   void startForegroundService(int runningCount);
@@ -353,13 +353,13 @@ abstract class CloneEngineApi {
   void stopForegroundService();
 
   /// Get memory snapshot.
-  PigeonMemorySnapshot getMemorySnapshot();
+  MemorySnapshotData getMemorySnapshot();
 
   /// Run security check.
-  PigeonSecurityStatus performSecurityCheck();
+  SecurityStatusData performSecurityCheck();
 
   /// Get performance metrics.
-  PigeonPerformanceMetrics getPerformanceMetrics();
+  PerformanceMetricsData getPerformanceMetrics();
 
   /// Check if it's safe to launch another clone.
   bool canLaunchClone();

@@ -53,7 +53,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
     private var maxConcurrentClones = 5
     private var memoryLimitPerClone = 256
 
-    private val cloneStore = mutableMapOf<String, PigeonCloneInfo>()
+    private val cloneStore = mutableMapOf<String, CloneInfoData>()
 
     companion object {
         const val EVENT_CHANNEL = "com.titanclone/events"
@@ -123,9 +123,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         return engineInitialized
     }
 
-    override fun getEngineStatus(): PigeonEngineStatus {
+    override fun getEngineStatus(): EngineStatusData {
         val runningCount = cloneStore.values.count { it.status == "running" }
-        return PigeonEngineStatus(
+        return EngineStatusData(
             initialized = engineInitialized,
             runningCloneCount = runningCount.toLong(),
             totalCloneCount = cloneStore.size.toLong(),
@@ -133,7 +133,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         )
     }
 
-    override fun getInstalledApps(callback: (Result<List<PigeonInstalledApp>>) -> Unit) {
+    override fun getInstalledApps(callback: (Result<List<InstalledAppData>>) -> Unit) {
         try {
             val pm = context.packageManager
             val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
@@ -161,7 +161,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
                         "other"
                     }
 
-                    PigeonInstalledApp(
+                    InstalledAppData(
                         packageName = appInfo.packageName,
                         appName = pm.getApplicationLabel(appInfo)?.toString() ?: appInfo.packageName,
                         versionName = packageInfo?.versionName,
@@ -188,7 +188,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         packageName: String,
         userId: Long,
         profilePreset: String?,
-        callback: (Result<PigeonCloneInfo>) -> Unit
+        callback: (Result<CloneInfoData>) -> Unit
     ) {
         try {
             val profile = profileGenerator.generateProfile(userId.toInt())
@@ -197,7 +197,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
             val cloneId = "${packageName}_clone_${userId}"
             val now = System.currentTimeMillis()
 
-            val cloneInfo = PigeonCloneInfo(
+            val cloneInfo = CloneInfoData(
                 id = cloneId,
                 packageName = packageName,
                 appName = getAppLabel(packageName),
@@ -221,7 +221,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
                         "data" to mapOf("percent" to i * 10)
                     ))
                 }
-                val readyClone = PigeonCloneInfo(
+                val readyClone = CloneInfoData(
                     id = cloneId,
                     packageName = packageName,
                     appName = getAppLabel(packageName),
@@ -248,7 +248,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         try {
             val existing = cloneStore[cloneId]
             if (existing != null) {
-                cloneStore[cloneId] = PigeonCloneInfo(
+                cloneStore[cloneId] = CloneInfoData(
                     id = existing.id,
                     packageName = existing.packageName,
                     appName = existing.appName,
@@ -274,7 +274,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         try {
             val existing = cloneStore[cloneId]
             if (existing != null) {
-                cloneStore[cloneId] = PigeonCloneInfo(
+                cloneStore[cloneId] = CloneInfoData(
                     id = existing.id,
                     packageName = existing.packageName,
                     appName = existing.appName,
@@ -305,7 +305,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         }
     }
 
-    override fun getClones(callback: (Result<List<PigeonCloneInfo>>) -> Unit) {
+    override fun getClones(callback: (Result<List<CloneInfoData>>) -> Unit) {
         try {
             callback(Result.success(cloneStore.values.toList()))
         } catch (e: Exception) {
@@ -322,11 +322,11 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         }
     }
 
-    override fun getCloneProfile(cloneId: String, callback: (Result<PigeonDeviceProfile?>) -> Unit) {
+    override fun getCloneProfile(cloneId: String, callback: (Result<DeviceProfileData?>) -> Unit) {
         try {
             val profileData = profileManager.getProfile(cloneId)
             if (profileData != null) {
-                val profile = PigeonDeviceProfile(
+                val profile = DeviceProfileData(
                     id = profileData["id"]?.toString() ?: cloneId,
                     name = profileData["name"]?.toString() ?: "Unknown",
                     model = profileData["model"]?.toString() ?: "",
@@ -362,7 +362,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun updateProfile(
         cloneId: String,
-        profile: PigeonDeviceProfile,
+        profile: DeviceProfileData,
         callback: (Result<Boolean>) -> Unit
     ) {
         try {
@@ -394,7 +394,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun resetCloneProfile(
         cloneId: String,
-        callback: (Result<PigeonDeviceProfile>) -> Unit
+        callback: (Result<DeviceProfileData>) -> Unit
     ) {
         try {
             val parts = cloneId.split("_clone_")
@@ -403,7 +403,7 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
             val packageName = parts.getOrNull(0) ?: ""
             profileManager.saveProfile(packageName, userId, newProfile)
 
-            val profile = PigeonDeviceProfile(
+            val profile = DeviceProfileData(
                 id = cloneId,
                 name = newProfile["name"]?.toString() ?: "Random Device",
                 model = newProfile["model"]?.toString() ?: "",
@@ -430,10 +430,10 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun getCloneStorageInfo(
         cloneId: String,
-        callback: (Result<PigeonStorageInfo>) -> Unit
+        callback: (Result<StorageInfoData>) -> Unit
     ) {
         try {
-            val storageInfo = PigeonStorageInfo(
+            val storageInfo = StorageInfoData(
                 cloneId = cloneId,
                 totalSizeBytes = 0,
                 dataSizeBytes = 0,
@@ -471,10 +471,10 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         return true
     }
 
-    override fun getGmsState(): PigeonGmsState {
+    override fun getGmsState(): GmsStateData {
         val gmsState = gmsProxy.detectGmsState()
         val precheck = playStoreManager.canCreatePlayStoreClone()
-        return PigeonGmsState(
+        return GmsStateData(
             gmsAvailable = gmsState.available,
             gmsVersion = gmsState.gmsVersion,
             playStoreVersion = gmsState.playStoreVersion,
@@ -502,9 +502,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         }
     }
 
-    override fun checkCompatibility(): PigeonCompatReport {
+    override fun checkCompatibility(): CompatReportData {
         val report = versionCompat.checkCompatibility()
-        return PigeonCompatReport(
+        return CompatReportData(
             apiLevel = report.apiLevel.toLong(),
             androidVersion = report.androidVersion,
             isSupported = report.isSupported,
@@ -514,9 +514,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         )
     }
 
-    override fun getBatteryOptimizationInfo(): PigeonBatteryInfo {
+    override fun getBatteryOptimizationInfo(): BatteryInfoData {
         val info = backgroundManager.detectBatteryOptimization()
-        return PigeonBatteryInfo(
+        return BatteryInfoData(
             isIgnoringOptimization = info.isIgnoringBatteryOptimization,
             oemBrand = info.oemBrand,
             oemIssue = info.oemIssue?.name
@@ -531,9 +531,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         CloneForegroundService.stop(context)
     }
 
-    override fun getMemorySnapshot(): PigeonMemorySnapshot {
+    override fun getMemorySnapshot(): MemorySnapshotData {
         val snapshot = memoryOptimizer.getMemorySnapshot()
-        return PigeonMemorySnapshot(
+        return MemorySnapshotData(
             totalDeviceRamMb = snapshot.totalDeviceRamMb,
             availableRamMb = snapshot.availableRamMb,
             engineNativeHeapMb = snapshot.engineNativeHeapMb,
@@ -545,9 +545,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         )
     }
 
-    override fun performSecurityCheck(): PigeonSecurityStatus {
+    override fun performSecurityCheck(): SecurityStatusData {
         val status = codeProtection.performSecurityCheck()
-        return PigeonSecurityStatus(
+        return SecurityStatusData(
             signatureValid = status.signatureValid,
             debuggerAttached = status.debuggerAttached,
             deviceRooted = status.deviceRooted,
@@ -557,10 +557,10 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
         )
     }
 
-    override fun getPerformanceMetrics(): PigeonPerformanceMetrics {
+    override fun getPerformanceMetrics(): PerformanceMetricsData {
         val timings = startupOptimizer.getAverageTimings()
         val battery = batteryOptimizer.getBatteryStatus()
-        return PigeonPerformanceMetrics(
+        return PerformanceMetricsData(
             avgColdLaunchMs = (timings["avgColdLaunchMs"] ?: 0L),
             avgWarmLaunchMs = (timings["avgWarmLaunchMs"] ?: 0L),
             avgProfileLoadMs = (timings["avgProfileLoadMs"] ?: 0L),
