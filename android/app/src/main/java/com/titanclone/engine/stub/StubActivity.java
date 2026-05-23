@@ -216,22 +216,16 @@ public class StubActivity extends Activity {
                 // Create the target Application
                 Class<?> appClass = customLoader.loadClass(appClassName);
 
-                // Build an ApplicationInfo that points at the target APK and its
-                // native library directory so that frameworks like Xamarin/Mono can
-                // locate libmonodroid.so (and friends) during attachBaseContext().
+                // Build an ApplicationInfo that exposes the target app's identity.
+                // sourceDir and splitSourceDirs stay as the INSTALLED app's paths
+                // (from PackageManager) so the system's ResourcesManager can create
+                // proper Resources from the real APK.  Only nativeLibraryDir and
+                // dataDir are redirected to the clone's sandbox.
                 final ApplicationInfo targetAppInfo = new ApplicationInfo(appInfo);
                 targetAppInfo.packageName = targetPackage;
-                targetAppInfo.sourceDir = apkFile.getAbsolutePath();
-                targetAppInfo.publicSourceDir = apkFile.getAbsolutePath();
-                // Preserve split APK paths — needed for App Bundle resources
-                if (splitApks != null && splitApks.length > 0) {
-                    String[] splitDirs = new String[splitApks.length];
-                    for (int i = 0; i < splitApks.length; i++) {
-                        splitDirs[i] = splitApks[i].getAbsolutePath();
-                    }
-                    targetAppInfo.splitSourceDirs = splitDirs;
-                    targetAppInfo.splitPublicSourceDirs = splitDirs;
-                }
+                // Keep appInfo.sourceDir (installed APK) — do NOT override with
+                // our copied APK path.  The system needs the real installed path
+                // for resource loading (ResourcesManager, AssetManager).
                 // Prefer the original app's nativeLibraryDir (system-extracted),
                 // fall back to the clone's extracted lib dir.
                 if (appInfo.nativeLibraryDir != null && new File(appInfo.nativeLibraryDir).isDirectory()) {
@@ -303,30 +297,6 @@ public class StubActivity extends Activity {
                 sTargetAppCreated = true;
                 sTargetPackage = targetPackage;
 
-                // Collect split APK paths for LoadedApk patching
-                String[] splitPaths = null;
-                if (splitApks != null && splitApks.length > 0) {
-                    splitPaths = new String[splitApks.length];
-                    for (int i = 0; i < splitApks.length; i++) {
-                        splitPaths[i] = splitApks[i].getAbsolutePath();
-                    }
-                }
-                // Also include original installed app's split APKs
-                try {
-                    if (appInfo.splitSourceDirs != null) {
-                        java.util.List<String> allSplits = new java.util.ArrayList<>();
-                        if (splitPaths != null) {
-                            java.util.Collections.addAll(allSplits, splitPaths);
-                        }
-                        for (String origSplit : appInfo.splitSourceDirs) {
-                            if (!allSplits.contains(origSplit)) {
-                                allSplits.add(origSplit);
-                            }
-                        }
-                        splitPaths = allSplits.toArray(new String[0]);
-                    }
-                } catch (Exception ignore) {}
-
                 // Inject into ActivityThread and ALL LoadedApk references
                 Class<?> atClass = Class.forName("android.app.ActivityThread");
                 Method currentAT = atClass.getDeclaredMethod("currentActivityThread");
@@ -349,7 +319,7 @@ public class StubActivity extends Activity {
                     if (loadedApk != null) {
                         setLoadedApkFields(loadedApk, sTargetApp, customLoader, targetRes);
                         patchLoadedApkIdentity(loadedApk, targetPackage,
-                                targetAppInfo, apkFile.getAbsolutePath(), splitPaths);
+                                targetAppInfo);
                     }
                 }
 
@@ -367,7 +337,7 @@ public class StubActivity extends Activity {
                             if (ref != null) {
                                 setLoadedApkFields(ref, sTargetApp, customLoader, targetRes);
                                 patchLoadedApkIdentity(ref, targetPackage,
-                                        targetAppInfo, apkFile.getAbsolutePath(), splitPaths);
+                                        targetAppInfo);
                             }
                         }
                     }
@@ -437,30 +407,16 @@ public class StubActivity extends Activity {
         }
 
         /**
-         * Deep LoadedApk patching: replace resource directories and
-         * ApplicationInfo so the system creates Resources from the
-         * TARGET APK instead of the host.  This prevents resource ID
-         * collisions between host and target.
-         *
-         * NOTE: mPackageName is intentionally NOT changed.  It must
-         * stay as the host package because Android's ContextImpl uses
-         * it as the "op package" for IPC security checks
-         * (AppOpsManager.checkPackage).  Changing it to the target
-         * package triggers SecurityException because the target
-         * package does not belong to the host app's UID.  The target
-         * package name is exposed through our ContextWrapper and the
-         * IPackageManager proxy instead.
+         * Patch LoadedApk with the target app's ApplicationInfo and
+         * data directory.  We intentionally do NOT change:
+         *   - mPackageName (system uses it for UID security checks)
+         *   - mResDir / mSplitResDirs (system needs the HOST's paths
+         *     to create valid Resources; target resources are injected
+         *     at the Activity level via callActivityOnCreate)
          */
         private static void patchLoadedApkIdentity(Object loadedApk,
-                String targetPackage, ApplicationInfo targetAppInfo,
-                String baseApkPath, String[] splitApkPaths) {
+                String targetPackage, ApplicationInfo targetAppInfo) {
             Class<?> cls = loadedApk.getClass();
-
-            // Resource directory — makes system create Resources from target APK
-            setField(cls, loadedApk, "mResDir", baseApkPath);
-
-            // Split resource directories
-            setField(cls, loadedApk, "mSplitResDirs", splitApkPaths);
 
             // ApplicationInfo — used by ContextImpl.getApplicationInfo()
             setField(cls, loadedApk, "mApplicationInfo", targetAppInfo);
