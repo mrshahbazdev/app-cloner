@@ -216,8 +216,30 @@ public class StubActivity extends Activity {
                 // Create the target Application
                 Class<?> appClass = customLoader.loadClass(appClassName);
 
-                // Use a ContextWrapper whose getApplicationContext() lazily
-                // returns sTargetApp once it is assigned below.
+                // Build an ApplicationInfo that points at the target APK and its
+                // native library directory so that frameworks like Xamarin/Mono can
+                // locate libmonodroid.so (and friends) during attachBaseContext().
+                final ApplicationInfo targetAppInfo = new ApplicationInfo(appInfo);
+                targetAppInfo.sourceDir = apkFile.getAbsolutePath();
+                targetAppInfo.publicSourceDir = apkFile.getAbsolutePath();
+                // Prefer the original app's nativeLibraryDir (system-extracted),
+                // fall back to the clone's extracted lib dir.
+                if (appInfo.nativeLibraryDir != null && new File(appInfo.nativeLibraryDir).isDirectory()) {
+                    targetAppInfo.nativeLibraryDir = appInfo.nativeLibraryDir;
+                } else {
+                    targetAppInfo.nativeLibraryDir = nativeLibDir.getAbsolutePath();
+                }
+                // Also set the data dir to the clone's sandbox
+                File dataDir = VirtualCore.get().getStorage().getCloneDataDir(targetPackage, 0);
+                if (dataDir != null) {
+                    targetAppInfo.dataDir = dataDir.getAbsolutePath();
+                }
+                final String tgtPkg = targetPackage;
+                final String apkPath = apkFile.getAbsolutePath();
+
+                // ContextWrapper that presents the target app's identity so that
+                // Application.attachBaseContext() sees the correct package name,
+                // ApplicationInfo (with nativeLibraryDir), and APK paths.
                 Context targetContext = new android.content.ContextWrapper(
                         VirtualCore.get().getContext()) {
                     @Override public Resources getResources() { return targetRes; }
@@ -225,6 +247,10 @@ public class StubActivity extends Activity {
                     @Override public Context getApplicationContext() {
                         return sTargetApp != null ? sTargetApp : this;
                     }
+                    @Override public ApplicationInfo getApplicationInfo() { return targetAppInfo; }
+                    @Override public String getPackageName() { return tgtPkg; }
+                    @Override public String getPackageCodePath() { return apkPath; }
+                    @Override public String getPackageResourcePath() { return apkPath; }
                 };
 
                 sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
