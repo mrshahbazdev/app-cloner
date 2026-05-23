@@ -62,6 +62,13 @@ public class StubActivity extends Activity {
                 // Install redirection rules for this slot's process
                 VirtualCore.get().getStorageManager().installRedirectRules(packageName, cloneUserId);
 
+                // Create and inject the target app's Application BEFORE launching
+                // the clone activity.  Apps using Hilt/Dagger require the Application
+                // to implement GeneratedComponentManager; doing this early ensures
+                // the correct Application is returned by makeApplication() when the
+                // framework calls performLaunchActivity() for the clone Activity.
+                VAInstrumentation.injectTargetApplication(packageName, cloneUserId);
+
                 // Inject our custom instrumentation to hijack target activity creation
                 VAInstrumentation.injectInstrumentation();
 
@@ -149,6 +156,168 @@ public class StubActivity extends Activity {
             this.base = base;
         }
 
+        /**
+         * Create and inject the clone's Application into all ActivityThread
+         * references BEFORE the clone Activity is launched.  This is critical
+         * for Hilt/Dagger apps whose Activities call getApplicationContext()
+         * in attachBaseContext() and expect GeneratedComponentManager.
+         */
+        @SuppressWarnings("unchecked")
+        public static void injectTargetApplication(String targetPackage, int userId) {
+            if (sTargetAppCreated) return;
+
+            try {
+                // Build the DexClassLoader for the target package
+                File apkFile = VirtualCore.get().getStorage().getCachedApk(targetPackage);
+                if (!apkFile.exists()) {
+                    Log.w(TAG, "Target APK not found for early app injection: " + targetPackage);
+                    return;
+                }
+
+                File pkgDir = VirtualCore.get().getStorage().getPackageApkDir(targetPackage);
+                StringBuilder dexPath = new StringBuilder(apkFile.getAbsolutePath());
+                File[] splitApks = pkgDir.listFiles((dir, name) ->
+                        name.endsWith(".apk") && !name.equals("base.apk"));
+                if (splitApks != null) {
+                    for (File split : splitApks) {
+                        dexPath.append(File.pathSeparator).append(split.getAbsolutePath());
+                    }
+                }
+
+                File nativeLibDir = new File(pkgDir, "lib");
+                String nativeLibPath = nativeLibDir.getAbsolutePath();
+                try {
+                    ApplicationInfo srcInfo = VirtualCore.get().getContext()
+                            .getPackageManager().getApplicationInfo(targetPackage, 0);
+                    if (srcInfo.nativeLibraryDir != null) {
+                        nativeLibPath += File.pathSeparator + srcInfo.nativeLibraryDir;
+                    }
+                } catch (Exception ignore) {}
+
+                final ClassLoader customLoader = new dalvik.system.DelegateLastClassLoader(
+                        dexPath.toString(),
+                        nativeLibPath,
+                        StubActivity.class.getClassLoader()
+                );
+
+                // Get the target Application class name from the installed package
+                ApplicationInfo appInfo = VirtualCore.get().getContext()
+                        .getPackageManager().getApplicationInfo(targetPackage,
+                                android.content.pm.PackageManager.GET_META_DATA);
+                String appClassName = appInfo.className;
+                if (appClassName == null) appClassName = "android.app.Application";
+
+                final Resources targetRes = VirtualCore.get().getContext()
+                        .getPackageManager().getResourcesForApplication(targetPackage);
+
+                // Create the target Application
+                Class<?> appClass = customLoader.loadClass(appClassName);
+
+                // Use a ContextWrapper whose getApplicationContext() lazily
+                // returns sTargetApp once it is assigned below.
+                Context targetContext = new android.content.ContextWrapper(
+                        VirtualCore.get().getContext()) {
+                    @Override public Resources getResources() { return targetRes; }
+                    @Override public ClassLoader getClassLoader() { return customLoader; }
+                    @Override public Context getApplicationContext() {
+                        return sTargetApp != null ? sTargetApp : this;
+                    }
+                };
+
+                sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
+                sTargetAppCreated = true;
+
+                // Inject into ActivityThread and ALL LoadedApk references
+                Class<?> atClass = Class.forName("android.app.ActivityThread");
+                Method currentAT = atClass.getDeclaredMethod("currentActivityThread");
+                currentAT.setAccessible(true);
+                Object activityThread = currentAT.invoke(null);
+
+                // 1. mInitialApplication
+                Field mInitApp = atClass.getDeclaredField("mInitialApplication");
+                mInitApp.setAccessible(true);
+                mInitApp.set(activityThread, sTargetApp);
+
+                // 2. mBoundApplication.info (LoadedApk)
+                Field mBoundApp = atClass.getDeclaredField("mBoundApplication");
+                mBoundApp.setAccessible(true);
+                Object boundApp = mBoundApp.get(activityThread);
+                if (boundApp != null) {
+                    Field infoField = boundApp.getClass().getDeclaredField("info");
+                    infoField.setAccessible(true);
+                    Object loadedApk = infoField.get(boundApp);
+                    if (loadedApk != null) {
+                        setLoadedApkFields(loadedApk, sTargetApp, customLoader, targetRes);
+                    }
+                }
+
+                // 3. Walk mPackages cache to update any other LoadedApk instances
+                try {
+                    Field mPkgsField = atClass.getDeclaredField("mPackages");
+                    mPkgsField.setAccessible(true);
+                    Object mPkgs = mPkgsField.get(activityThread);
+                    if (mPkgs instanceof java.util.Map) {
+                        for (Object val : ((java.util.Map<?, ?>) mPkgs).values()) {
+                            Object ref = val;
+                            if (ref instanceof java.lang.ref.WeakReference) {
+                                ref = ((java.lang.ref.WeakReference<?>) ref).get();
+                            }
+                            if (ref != null) {
+                                setLoadedApkFields(ref, sTargetApp, customLoader, targetRes);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to walk mPackages cache", e);
+                }
+
+                // 4. Also update mAllApplications
+                try {
+                    Field mAllApps = atClass.getDeclaredField("mAllApplications");
+                    mAllApps.setAccessible(true);
+                    @SuppressWarnings("unchecked")
+                    java.util.ArrayList<android.app.Application> allApps =
+                            (java.util.ArrayList<android.app.Application>) mAllApps.get(activityThread);
+                    if (allApps != null && !allApps.contains(sTargetApp)) {
+                        allApps.add(sTargetApp);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to add to mAllApplications", e);
+                }
+
+                sTargetApp.onCreate();
+                Log.i(TAG, "Early Application injection succeeded: " + appClassName);
+
+            } catch (Throwable e) {
+                Log.e(TAG, "Early Application injection failed for " + targetPackage, e);
+            }
+        }
+
+        private static void setLoadedApkFields(Object loadedApk,
+                android.app.Application app, ClassLoader cl, Resources res) {
+            try {
+                Field mApp = loadedApk.getClass().getDeclaredField("mApplication");
+                mApp.setAccessible(true);
+                mApp.set(loadedApk, app);
+            } catch (Exception e) {
+                Log.w(TAG, "setLoadedApk mApplication failed", e);
+            }
+            try {
+                Field mCl = loadedApk.getClass().getDeclaredField("mClassLoader");
+                mCl.setAccessible(true);
+                mCl.set(loadedApk, cl);
+            } catch (Exception e) {
+                Log.w(TAG, "setLoadedApk mClassLoader failed", e);
+            }
+            try {
+                Field mRes = loadedApk.getClass().getDeclaredField("mResources");
+                mRes.setAccessible(true);
+                mRes.set(loadedApk, res);
+            } catch (Exception e) {
+                Log.w(TAG, "setLoadedApk mResources failed", e);
+            }
+        }
+
         public static void injectInstrumentation() {
             try {
                 Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
@@ -181,108 +350,44 @@ public class StubActivity extends Activity {
                     int userId = intent.getIntExtra(EXTRA_CLONE_USER_ID, -1);
 
                     try {
-                        // Get target APK file path from virtual storage
-                        File apkFile = VirtualCore.get().getStorage().getCachedApk(targetPackage);
-                        if (!apkFile.exists()) {
-                            Log.e(TAG, "Target APK missing: " + apkFile.getAbsolutePath());
-                            return super.newActivity(cl, className, intent);
-                        }
-
-                        // Build classpath: base.apk + all split APKs
-                        File pkgDir = VirtualCore.get().getStorage().getPackageApkDir(targetPackage);
-                        StringBuilder dexPath = new StringBuilder(apkFile.getAbsolutePath());
-                        File[] splitApks = pkgDir.listFiles((dir, name) ->
-                                name.endsWith(".apk") && !name.equals("base.apk"));
-                        if (splitApks != null) {
-                            for (File split : splitApks) {
-                                dexPath.append(File.pathSeparator).append(split.getAbsolutePath());
-                            }
-                        }
-
-                        File nativeLibDir = new File(pkgDir, "lib");
-
-                        // Also include original app's native lib dir as fallback
-                        String nativeLibPath = nativeLibDir.getAbsolutePath();
-                        try {
-                            ApplicationInfo srcInfo = VirtualCore.get().getContext()
-                                    .getPackageManager().getApplicationInfo(targetPackage, 0);
-                            if (srcInfo.nativeLibraryDir != null) {
-                                nativeLibPath += File.pathSeparator + srcInfo.nativeLibraryDir;
-                            }
-                        } catch (Exception ignore) {}
-
-                        // Use DelegateLastClassLoader to prioritize cloned app's classes over the host engine's classes
-                        final ClassLoader customLoader = new dalvik.system.DelegateLastClassLoader(
-                                dexPath.toString(),
-                                nativeLibPath,
-                                cl
-                        );
-
-                        // Fix LoadedApk and create Application BEFORE creating the Activity
-                        Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
-                        Method currentActivityThreadMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
-                        currentActivityThreadMethod.setAccessible(true);
-                        Object activityThread = currentActivityThreadMethod.invoke(null);
-                        
-                        Field mBoundApplicationField = activityThreadClass.getDeclaredField("mBoundApplication");
-                        mBoundApplicationField.setAccessible(true);
-                        Object mBoundApplication = mBoundApplicationField.get(activityThread);
-                        
-                        Object loadedApk = null;
-                        if (mBoundApplication != null) {
-                            Field infoField = mBoundApplication.getClass().getDeclaredField("info");
-                            infoField.setAccessible(true);
-                            loadedApk = infoField.get(mBoundApplication);
-                        }
-                        
-                        final Resources targetRes = VirtualCore.get().getContext().getPackageManager().getResourcesForApplication(targetPackage);
-
-                        if (loadedApk != null) {
-                            try {
-                                Field mClassLoaderField = loadedApk.getClass().getDeclaredField("mClassLoader");
-                                mClassLoaderField.setAccessible(true);
-                                mClassLoaderField.set(loadedApk, customLoader);
-                                
-                                Field mResourcesField = loadedApk.getClass().getDeclaredField("mResources");
-                                mResourcesField.setAccessible(true);
-                                mResourcesField.set(loadedApk, targetRes);
-                            } catch (Exception ignore) {}
-                        }
-
+                        // Target Application should already be created by
+                        // injectTargetApplication() in StubActivity.onCreate().
+                        // If not, create it now as fallback.
                         if (!sTargetAppCreated) {
-                            sTargetAppCreated = true;
-                            try {
-                                android.content.pm.ApplicationInfo appInfo = VirtualCore.get().getContext().getPackageManager().getApplicationInfo(targetPackage, android.content.pm.PackageManager.GET_META_DATA);
-                                String appClassName = appInfo.className;
-                                if (appClassName == null) appClassName = "android.app.Application";
-                                
-                                Class<?> appClass = customLoader.loadClass(appClassName);
-                                Context targetContext = new android.content.ContextWrapper(VirtualCore.get().getContext()) {
-                                    @Override
-                                    public Resources getResources() { return targetRes; }
-                                    @Override
-                                    public ClassLoader getClassLoader() { return customLoader; }
-                                    @Override
-                                    public Context getApplicationContext() { return sTargetApp; }
-                                };
-                                
-                                sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
-                                
-                                if (loadedApk != null) {
-                                    Field mApplicationField = loadedApk.getClass().getDeclaredField("mApplication");
-                                    mApplicationField.setAccessible(true);
-                                    mApplicationField.set(loadedApk, sTargetApp);
-                                }
-                                
-                                Field mInitialApplicationField = activityThreadClass.getDeclaredField("mInitialApplication");
-                                mInitialApplicationField.setAccessible(true);
-                                mInitialApplicationField.set(activityThread, sTargetApp);
-                                
-                                sTargetApp.onCreate();
-                                Log.i(TAG, "Successfully created and injected target Application: " + appClassName);
-                            } catch (Exception e) {
-                                Log.e(TAG, "Failed to create target Application", e);
+                            injectTargetApplication(targetPackage, userId);
+                        }
+
+                        // Use the classloader from the target Application if available,
+                        // otherwise build one from scratch
+                        ClassLoader customLoader;
+                        if (sTargetApp != null) {
+                            customLoader = sTargetApp.getClassLoader();
+                        } else {
+                            File apkFile = VirtualCore.get().getStorage().getCachedApk(targetPackage);
+                            if (!apkFile.exists()) {
+                                Log.e(TAG, "Target APK missing: " + apkFile.getAbsolutePath());
+                                return super.newActivity(cl, className, intent);
                             }
+                            File pkgDir = VirtualCore.get().getStorage().getPackageApkDir(targetPackage);
+                            StringBuilder dexPath = new StringBuilder(apkFile.getAbsolutePath());
+                            File[] splitApks = pkgDir.listFiles((dir, name) ->
+                                    name.endsWith(".apk") && !name.equals("base.apk"));
+                            if (splitApks != null) {
+                                for (File split : splitApks) {
+                                    dexPath.append(File.pathSeparator).append(split.getAbsolutePath());
+                                }
+                            }
+                            File nativeLibDir = new File(pkgDir, "lib");
+                            String nativeLibPath = nativeLibDir.getAbsolutePath();
+                            try {
+                                ApplicationInfo srcInfo = VirtualCore.get().getContext()
+                                        .getPackageManager().getApplicationInfo(targetPackage, 0);
+                                if (srcInfo.nativeLibraryDir != null) {
+                                    nativeLibPath += File.pathSeparator + srcInfo.nativeLibraryDir;
+                                }
+                            } catch (Exception ignore) {}
+                            customLoader = new dalvik.system.DelegateLastClassLoader(
+                                    dexPath.toString(), nativeLibPath, cl);
                         }
 
                         // Load real activity class and instantiate it
