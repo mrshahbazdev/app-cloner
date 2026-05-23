@@ -459,6 +459,23 @@ public class StubActivity extends Activity {
                 Class<?> ipmClass = Class.forName(
                         "android.content.pm.IPackageManager");
 
+                // Only redirect specific methods where the clone app
+                // MUST see the target package's data (signatures,
+                // permissions, version info).  Do NOT redirect
+                // getApplicationInfo — it returns metaData that
+                // includes com.google.android.gms.version, and the
+                // loaded GMS client library expects the HOST's value.
+                // Target ApplicationInfo is exposed separately via
+                // LoadedApk.mApplicationInfo and our ContextWrapper.
+                final java.util.Set<String> redirectMethods =
+                        new java.util.HashSet<>(java.util.Arrays.asList(
+                                "getPackageInfo",
+                                "getPackageGids",
+                                "getPermissionInfo",
+                                "getInstallerPackageName",
+                                "getPackageUid"
+                        ));
+
                 Object proxy = java.lang.reflect.Proxy.newProxyInstance(
                         ipmClass.getClassLoader(),
                         new Class<?>[]{ ipmClass },
@@ -466,21 +483,23 @@ public class StubActivity extends Activity {
                             @Override
                             public Object invoke(Object p, Method method,
                                     Object[] args) throws Throwable {
-                                // Redirect host package queries to target
-                                if (args != null && args.length > 0
+                                String name = method.getName();
+
+                                // Redirect first-arg package name for
+                                // selected methods only
+                                if (redirectMethods.contains(name)
+                                        && args != null && args.length > 0
                                         && args[0] instanceof String) {
-                                    String pkg = (String) args[0];
-                                    if (hostPackage.equals(pkg)) {
+                                    if (hostPackage.equals(args[0])) {
                                         args[0] = targetPackage;
                                     }
                                 }
 
                                 // checkPermission(permName, pkgName)
-                                if ("checkPermission".equals(method.getName())
+                                if ("checkPermission".equals(name)
                                         && args != null && args.length >= 2
                                         && args[1] instanceof String) {
-                                    String pkg = (String) args[1];
-                                    if (hostPackage.equals(pkg)) {
+                                    if (hostPackage.equals(args[1])) {
                                         args[1] = targetPackage;
                                     }
                                 }
