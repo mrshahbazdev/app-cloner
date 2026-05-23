@@ -18,9 +18,8 @@ build/
 **/android/**/GeneratedPluginRegistrant.java
 **/android/**/GeneratedPluginRegistrant.kt
 
-# Generated files (keeping .freezed.dart and .g.dart tracked for CI)
+# Generated files (keeping .freezed.dart, .g.dart, and Pigeon output tracked for CI)
 *.mocks.dart
-lib/services/generated/
 
 # IDE
 .vscode/

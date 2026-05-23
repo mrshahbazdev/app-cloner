@@ -1,28 +1,26 @@
-import 'dart:async';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/constants/app_constants.dart';
 import '../core/utils/logger.dart';
 import '../models/clone_info.dart';
 import '../models/clone_status.dart';
 import '../models/device_profile.dart';
+import 'generated/clone_api.g.dart';
 
 final cloneEngineServiceProvider = Provider<CloneEngineService>((ref) {
   return CloneEngineService();
 });
 
 class CloneEngineService {
-  static const _channel = MethodChannel(AppConstants.bridgeChannelName);
+  final CloneEngineApi _api = CloneEngineApi();
 
   bool _engineReady = false;
   bool get isEngineReady => _engineReady;
 
   Future<bool> initializeEngine() async {
     try {
-      final result = await _channel.invokeMethod<bool>('initializeEngine');
-      _engineReady = result ?? false;
+      final result = await _api.initializeEngine();
+      _engineReady = result;
       return _engineReady;
     } on PlatformException catch (e) {
       AppLogger.error('Failed to initialize engine', error: e);
@@ -32,20 +30,12 @@ class CloneEngineService {
 
   Future<EngineStatus> getEngineStatus() async {
     try {
-      final result = await _channel.invokeMethod<Map>('getEngineStatus');
-      if (result == null) {
-        return EngineStatus(
-          initialized: _engineReady,
-          runningCloneCount: 0,
-          totalCloneCount: 0,
-          memoryUsageMb: 0,
-        );
-      }
+      final result = await _api.getEngineStatus();
       return EngineStatus(
-        initialized: result['initialized'] as bool? ?? false,
-        runningCloneCount: result['runningCloneCount'] as int? ?? 0,
-        totalCloneCount: result['totalCloneCount'] as int? ?? 0,
-        memoryUsageMb: result['memoryUsageMb'] as int? ?? 0,
+        initialized: result.initialized,
+        runningCloneCount: result.runningCloneCount,
+        totalCloneCount: result.totalCloneCount,
+        memoryUsageMb: result.memoryUsageMb,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get engine status', error: e);
@@ -60,12 +50,19 @@ class CloneEngineService {
 
   Future<List<InstalledApp>> getInstalledApps() async {
     try {
-      final result = await _channel.invokeMethod<List>('getInstalledApps');
-      if (result == null) return [];
+      final result = await _api.getInstalledApps();
       return result
-          .cast<Map>()
-          .map((e) =>
-              InstalledApp.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => InstalledApp(
+                packageName: e.packageName,
+                appName: e.appName,
+                iconPath: e.iconPath,
+                versionName: e.versionName,
+                versionCode: e.versionCode,
+                isSystemApp: e.isSystemApp,
+                installedSizeBytes: e.installedSizeBytes,
+                isSplitApk: e.isSplitApk,
+                category: e.category,
+              ))
           .toList();
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get installed apps', error: e);
@@ -79,13 +76,26 @@ class CloneEngineService {
     String? profilePreset,
   }) async {
     try {
-      final result = await _channel.invokeMethod<Map>('createClone', {
-        'packageName': packageName,
-        'userId': userId,
-        if (profilePreset != null) 'profilePreset': profilePreset,
-      });
-      if (result == null) return null;
-      return CloneInfo.fromJson(Map<String, dynamic>.from(result));
+      final result =
+          await _api.createClone(packageName, userId, profilePreset);
+      return CloneInfo(
+        id: result.id,
+        packageName: result.packageName,
+        appName: result.appName,
+        userId: result.userId,
+        status: CloneStatus.values.firstWhere(
+          (s) => s.name == result.status,
+          orElse: () => CloneStatus.installing,
+        ),
+        createdAt:
+            DateTime.fromMillisecondsSinceEpoch(result.createdAtMs),
+        appIconPath: result.appIconPath,
+        memoryUsageMb: result.memoryUsageMb,
+        lastLaunched: result.lastLaunchedMs != null
+            ? DateTime.fromMillisecondsSinceEpoch(result.lastLaunchedMs!)
+            : null,
+        storageSizeBytes: result.storageSizeBytes,
+      );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to create clone', error: e);
       return null;
@@ -94,10 +104,7 @@ class CloneEngineService {
 
   Future<bool> launchClone(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<bool>('launchClone', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.launchClone(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to launch clone', error: e);
       return false;
@@ -106,10 +113,7 @@ class CloneEngineService {
 
   Future<bool> stopClone(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<bool>('stopClone', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.stopClone(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to stop clone', error: e);
       return false;
@@ -118,10 +122,7 @@ class CloneEngineService {
 
   Future<bool> deleteClone(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<bool>('deleteClone', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.deleteClone(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to delete clone', error: e);
       return false;
@@ -130,11 +131,27 @@ class CloneEngineService {
 
   Future<List<CloneInfo>> getClones() async {
     try {
-      final result = await _channel.invokeMethod<List>('getClones');
-      if (result == null) return [];
+      final result = await _api.getClones();
       return result
-          .cast<Map>()
-          .map((e) => CloneInfo.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => CloneInfo(
+                id: e.id,
+                packageName: e.packageName,
+                appName: e.appName,
+                userId: e.userId,
+                status: CloneStatus.values.firstWhere(
+                  (s) => s.name == e.status,
+                  orElse: () => CloneStatus.stopped,
+                ),
+                createdAt:
+                    DateTime.fromMillisecondsSinceEpoch(e.createdAtMs),
+                appIconPath: e.appIconPath,
+                memoryUsageMb: e.memoryUsageMb,
+                lastLaunched: e.lastLaunchedMs != null
+                    ? DateTime.fromMillisecondsSinceEpoch(
+                        e.lastLaunchedMs!)
+                    : null,
+                storageSizeBytes: e.storageSizeBytes,
+              ))
           .toList();
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get clones', error: e);
@@ -144,10 +161,7 @@ class CloneEngineService {
 
   Future<CloneStatus?> getCloneStatus(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<String>('getCloneStatus', {
-        'cloneId': cloneId,
-      });
-      if (result == null) return null;
+      final result = await _api.getCloneStatus(cloneId);
       return CloneStatus.values.firstWhere(
         (s) => s.name == result,
         orElse: () => CloneStatus.error,
@@ -160,11 +174,34 @@ class CloneEngineService {
 
   Future<DeviceProfile?> getCloneProfile(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<Map>('getCloneProfile', {
-        'cloneId': cloneId,
-      });
+      final result = await _api.getCloneProfile(cloneId);
       if (result == null) return null;
-      return DeviceProfile.fromJson(Map<String, dynamic>.from(result));
+      return DeviceProfile(
+        id: result.id,
+        name: result.name,
+        model: result.model,
+        brand: result.brand,
+        manufacturer: result.manufacturer,
+        fingerprint: result.fingerprint,
+        screenDensity: result.screenDensity,
+        screenWidth: result.screenWidth,
+        screenHeight: result.screenHeight,
+        abis: const ['arm64-v8a', 'armeabi-v7a'],
+        sdkVersion: result.sdkVersion,
+        releaseVersion: result.releaseVersion,
+        androidId: result.androidId,
+        imei: result.imei,
+        macAddress: result.macAddress,
+        bluetoothMac: result.bluetoothMac,
+        gsfId: result.gsfId,
+        advertisingId: result.advertisingId,
+        serialNumber: result.serialNumber,
+        timezone: result.timezone,
+        locale: result.locale,
+        proxyHost: result.proxyHost,
+        proxyPort: result.proxyPort,
+        proxyType: result.proxyType,
+      );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get clone profile', error: e);
       return null;
@@ -176,11 +213,32 @@ class CloneEngineService {
     DeviceProfile profile,
   ) async {
     try {
-      final result = await _channel.invokeMethod<bool>('updateProfile', {
-        'cloneId': cloneId,
-        'profile': profile.toJson(),
-      });
-      return result ?? false;
+      final pigeonProfile = DeviceProfileData(
+        id: profile.id,
+        name: profile.name,
+        model: profile.model,
+        brand: profile.brand,
+        manufacturer: profile.manufacturer,
+        fingerprint: profile.fingerprint,
+        screenDensity: profile.screenDensity,
+        screenWidth: profile.screenWidth,
+        screenHeight: profile.screenHeight,
+        sdkVersion: profile.sdkVersion,
+        releaseVersion: profile.releaseVersion,
+        androidId: profile.androidId,
+        imei: profile.imei,
+        macAddress: profile.macAddress,
+        bluetoothMac: profile.bluetoothMac,
+        gsfId: profile.gsfId,
+        advertisingId: profile.advertisingId,
+        serialNumber: profile.serialNumber,
+        timezone: profile.timezone,
+        locale: profile.locale,
+        proxyHost: profile.proxyHost,
+        proxyPort: profile.proxyPort,
+        proxyType: profile.proxyType,
+      );
+      return await _api.updateProfile(cloneId, pigeonProfile);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to update clone profile', error: e);
       return false;
@@ -189,12 +247,33 @@ class CloneEngineService {
 
   Future<DeviceProfile?> resetCloneProfile(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<Map>('resetCloneProfile', {
-        'cloneId': cloneId,
-      });
-      if (result == null) return null;
-      return DeviceProfile.fromJson(Map<String, dynamic>.from(result));
+      final result = await _api.resetCloneProfile(cloneId);
+      return DeviceProfile(
+        id: result.id,
+        name: result.name,
+        model: result.model,
+        brand: result.brand,
+        manufacturer: result.manufacturer,
+        fingerprint: result.fingerprint,
+        screenDensity: result.screenDensity,
+        screenWidth: result.screenWidth,
+        screenHeight: result.screenHeight,
+        abis: const ['arm64-v8a', 'armeabi-v7a'],
+        sdkVersion: result.sdkVersion,
+        releaseVersion: result.releaseVersion,
+        androidId: result.androidId,
+        imei: result.imei,
+        macAddress: result.macAddress,
+        bluetoothMac: result.bluetoothMac,
+        gsfId: result.gsfId,
+        advertisingId: result.advertisingId,
+        serialNumber: result.serialNumber,
+        timezone: result.timezone,
+        locale: result.locale,
+        proxyHost: result.proxyHost,
+        proxyPort: result.proxyPort,
+        proxyType: result.proxyType,
+      );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to reset clone profile', error: e);
       return null;
@@ -203,22 +282,12 @@ class CloneEngineService {
 
   Future<StorageInfo> getCloneStorageInfo(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<Map>('getCloneStorageInfo', {
-        'cloneId': cloneId,
-      });
-      if (result == null) {
-        return StorageInfo(
-            cloneId: cloneId,
-            totalSizeBytes: 0,
-            dataSizeBytes: 0,
-            cacheSizeBytes: 0);
-      }
+      final result = await _api.getCloneStorageInfo(cloneId);
       return StorageInfo(
-        cloneId: result['cloneId'] as String? ?? cloneId,
-        totalSizeBytes: result['totalSizeBytes'] as int? ?? 0,
-        dataSizeBytes: result['dataSizeBytes'] as int? ?? 0,
-        cacheSizeBytes: result['cacheSizeBytes'] as int? ?? 0,
+        cloneId: result.cloneId,
+        totalSizeBytes: result.totalSizeBytes,
+        dataSizeBytes: result.dataSizeBytes,
+        cacheSizeBytes: result.cacheSizeBytes,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get storage info', error: e);
@@ -232,11 +301,7 @@ class CloneEngineService {
 
   Future<bool> clearCloneCache(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('clearCloneCache', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.clearCloneCache(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to clear cache', error: e);
       return false;
@@ -245,11 +310,7 @@ class CloneEngineService {
 
   Future<bool> clearCloneData(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('clearCloneData', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.clearCloneData(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to clear data', error: e);
       return false;
@@ -258,11 +319,7 @@ class CloneEngineService {
 
   Future<bool> setMaxConcurrentClones(int maxClones) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('setMaxConcurrentClones', {
-        'maxClones': maxClones,
-      });
-      return result ?? false;
+      return await _api.setMaxConcurrentClones(maxClones);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to set max concurrent clones', error: e);
       return false;
@@ -271,11 +328,7 @@ class CloneEngineService {
 
   Future<bool> setMemoryLimitPerClone(int limitMb) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('setMemoryLimitPerClone', {
-        'limitMb': limitMb,
-      });
-      return result ?? false;
+      return await _api.setMemoryLimitPerClone(limitMb);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to set memory limit', error: e);
       return false;
@@ -284,24 +337,14 @@ class CloneEngineService {
 
   Future<GmsState> getGmsState() async {
     try {
-      final result = await _channel.invokeMethod<Map>('getGmsState');
-      if (result == null) {
-        return const GmsState(
-          gmsAvailable: false,
-          gmsVersion: null,
-          playStoreVersion: null,
-          gsfAvailable: false,
-          maxPlayStoreClones: 12,
-          activePlayStoreClones: 0,
-        );
-      }
+      final result = await _api.getGmsState();
       return GmsState(
-        gmsAvailable: result['gmsAvailable'] as bool? ?? false,
-        gmsVersion: result['gmsVersion'] as String?,
-        playStoreVersion: result['playStoreVersion'] as String?,
-        gsfAvailable: result['gsfAvailable'] as bool? ?? false,
-        maxPlayStoreClones: result['maxPlayStoreClones'] as int? ?? 12,
-        activePlayStoreClones: result['activePlayStoreClones'] as int? ?? 0,
+        gmsAvailable: result.gmsAvailable,
+        gmsVersion: result.gmsVersion,
+        playStoreVersion: result.playStoreVersion,
+        gsfAvailable: result.gsfAvailable,
+        maxPlayStoreClones: result.maxPlayStoreClones,
+        activePlayStoreClones: result.activePlayStoreClones,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get GMS state', error: e);
@@ -318,11 +361,7 @@ class CloneEngineService {
 
   Future<String?> createPlayStoreClone({String? devicePreset}) async {
     try {
-      final result =
-          await _channel.invokeMethod<String>('createPlayStoreClone', {
-        if (devicePreset != null) 'devicePreset': devicePreset,
-      });
-      return result;
+      return await _api.createPlayStoreClone(devicePreset);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to create Play Store clone', error: e);
       return null;
@@ -331,11 +370,7 @@ class CloneEngineService {
 
   Future<bool> deletePlayStoreClone(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('deletePlayStoreClone', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.deletePlayStoreClone(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to delete Play Store clone', error: e);
       return false;
@@ -344,26 +379,14 @@ class CloneEngineService {
 
   Future<CompatReport> checkCompatibility() async {
     try {
-      final result = await _channel.invokeMethod<Map>('checkCompatibility');
-      if (result == null) {
-        return CompatReport(
-          apiLevel: 0,
-          androidVersion: 'Unknown',
-          isSupported: false,
-          issues: [],
-          missingPermissions: [],
-          recommendations: [],
-        );
-      }
+      final result = await _api.checkCompatibility();
       return CompatReport(
-        apiLevel: result['apiLevel'] as int? ?? 0,
-        androidVersion: result['androidVersion'] as String? ?? 'Unknown',
-        isSupported: result['isSupported'] as bool? ?? false,
-        issues: (result['issues'] as List?)?.cast<String>() ?? [],
-        missingPermissions:
-            (result['missingPermissions'] as List?)?.cast<String>() ?? [],
-        recommendations:
-            (result['recommendations'] as List?)?.cast<String>() ?? [],
+        apiLevel: result.apiLevel,
+        androidVersion: result.androidVersion,
+        isSupported: result.isSupported,
+        issues: result.issues,
+        missingPermissions: result.missingPermissions,
+        recommendations: result.recommendations,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to check compatibility', error: e);
@@ -380,20 +403,11 @@ class CloneEngineService {
 
   Future<BatteryInfo> getBatteryOptimizationInfo() async {
     try {
-      final result =
-          await _channel.invokeMethod<Map>('getBatteryOptimizationInfo');
-      if (result == null) {
-        return const BatteryInfo(
-          isIgnoringOptimization: false,
-          oemBrand: 'Unknown',
-          oemIssue: null,
-        );
-      }
+      final result = await _api.getBatteryOptimizationInfo();
       return BatteryInfo(
-        isIgnoringOptimization:
-            result['isIgnoringOptimization'] as bool? ?? false,
-        oemBrand: result['oemBrand'] as String? ?? 'Unknown',
-        oemIssue: result['oemIssue'] as String?,
+        isIgnoringOptimization: result.isIgnoringOptimization,
+        oemBrand: result.oemBrand,
+        oemIssue: result.oemIssue,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get battery info', error: e);
@@ -407,9 +421,7 @@ class CloneEngineService {
 
   Future<void> startForegroundService(int runningCount) async {
     try {
-      await _channel.invokeMethod<void>('startForegroundService', {
-        'runningCount': runningCount,
-      });
+      await _api.startForegroundService(runningCount);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to start foreground service', error: e);
     }
@@ -417,7 +429,7 @@ class CloneEngineService {
 
   Future<void> stopForegroundService() async {
     try {
-      await _channel.invokeMethod<void>('stopForegroundService');
+      await _api.stopForegroundService();
     } on PlatformException catch (e) {
       AppLogger.error('Failed to stop foreground service', error: e);
     }
@@ -425,18 +437,16 @@ class CloneEngineService {
 
   Future<MemorySnapshot> getMemorySnapshot() async {
     try {
-      final result = await _channel.invokeMethod<Map>('getMemorySnapshot');
-      if (result == null) return MemorySnapshot.empty();
+      final result = await _api.getMemorySnapshot();
       return MemorySnapshot(
-        totalDeviceRamMb: result['totalDeviceRamMb'] as int? ?? 0,
-        availableRamMb: result['availableRamMb'] as int? ?? 0,
-        engineNativeHeapMb: result['engineNativeHeapMb'] as int? ?? 0,
-        engineJavaHeapMb: result['engineJavaHeapMb'] as int? ?? 0,
-        cloneProcessCount: result['cloneProcessCount'] as int? ?? 0,
-        estimatedCloneOverheadMb:
-            result['estimatedCloneOverheadMb'] as int? ?? 0,
-        isLowMemory: result['isLowMemory'] as bool? ?? false,
-        recommendedMaxClones: result['recommendedMaxClones'] as int? ?? 3,
+        totalDeviceRamMb: result.totalDeviceRamMb,
+        availableRamMb: result.availableRamMb,
+        engineNativeHeapMb: result.engineNativeHeapMb,
+        engineJavaHeapMb: result.engineJavaHeapMb,
+        cloneProcessCount: result.cloneProcessCount,
+        estimatedCloneOverheadMb: result.estimatedCloneOverheadMb,
+        isLowMemory: result.isLowMemory,
+        recommendedMaxClones: result.recommendedMaxClones,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get memory snapshot', error: e);
@@ -446,16 +456,14 @@ class CloneEngineService {
 
   Future<SecurityStatus> performSecurityCheck() async {
     try {
-      final result =
-          await _channel.invokeMethod<Map>('performSecurityCheck');
-      if (result == null) return SecurityStatus.unknown();
+      final result = await _api.performSecurityCheck();
       return SecurityStatus(
-        signatureValid: result['signatureValid'] as bool? ?? false,
-        debuggerAttached: result['debuggerAttached'] as bool? ?? false,
-        deviceRooted: result['deviceRooted'] as bool? ?? false,
-        isEmulator: result['isEmulator'] as bool? ?? false,
-        nativeLibsIntact: result['nativeLibsIntact'] as bool? ?? false,
-        overallSecure: result['overallSecure'] as bool? ?? false,
+        signatureValid: result.signatureValid,
+        debuggerAttached: result.debuggerAttached,
+        deviceRooted: result.deviceRooted,
+        isEmulator: result.isEmulator,
+        nativeLibsIntact: result.nativeLibsIntact,
+        overallSecure: result.overallSecure,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to perform security check', error: e);
@@ -465,18 +473,15 @@ class CloneEngineService {
 
   Future<PerformanceMetrics> getPerformanceMetrics() async {
     try {
-      final result =
-          await _channel.invokeMethod<Map>('getPerformanceMetrics');
-      if (result == null) return PerformanceMetrics.empty();
+      final result = await _api.getPerformanceMetrics();
       return PerformanceMetrics(
-        avgColdLaunchMs: result['avgColdLaunchMs'] as int? ?? 0,
-        avgWarmLaunchMs: result['avgWarmLaunchMs'] as int? ?? 0,
-        avgProfileLoadMs: result['avgProfileLoadMs'] as int? ?? 0,
-        totalLaunches: result['totalLaunches'] as int? ?? 0,
-        batteryLevel: result['batteryLevel'] as int? ?? 0,
-        isCharging: result['isCharging'] as bool? ?? false,
-        powerRecommendation:
-            result['powerRecommendation'] as String? ?? 'UNKNOWN',
+        avgColdLaunchMs: result.avgColdLaunchMs,
+        avgWarmLaunchMs: result.avgWarmLaunchMs,
+        avgProfileLoadMs: result.avgProfileLoadMs,
+        totalLaunches: result.totalLaunches,
+        batteryLevel: result.batteryLevel,
+        isCharging: result.isCharging,
+        powerRecommendation: result.powerRecommendation,
       );
     } on PlatformException catch (e) {
       AppLogger.error('Failed to get performance metrics', error: e);
@@ -486,8 +491,7 @@ class CloneEngineService {
 
   Future<bool> canLaunchClone() async {
     try {
-      final result = await _channel.invokeMethod<bool>('canLaunchClone');
-      return result ?? true;
+      return await _api.canLaunchClone();
     } on PlatformException catch (e) {
       AppLogger.error('Failed to check launch capability', error: e);
       return true;
@@ -496,7 +500,7 @@ class CloneEngineService {
 
   Future<void> requestGc() async {
     try {
-      await _channel.invokeMethod<void>('requestGc');
+      await _api.requestGc();
     } on PlatformException catch (e) {
       AppLogger.error('Failed to request GC', error: e);
     }
@@ -504,10 +508,7 @@ class CloneEngineService {
 
   Future<bool> encryptCloneData(String cloneId) async {
     try {
-      final result = await _channel.invokeMethod<bool>('encryptCloneData', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.encryptCloneData(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to encrypt clone data', error: e);
       return false;
@@ -516,11 +517,7 @@ class CloneEngineService {
 
   Future<bool> secureDeleteCloneData(String cloneId) async {
     try {
-      final result =
-          await _channel.invokeMethod<bool>('secureDeleteCloneData', {
-        'cloneId': cloneId,
-      });
-      return result ?? false;
+      return await _api.secureDeleteCloneData(cloneId);
     } on PlatformException catch (e) {
       AppLogger.error('Failed to secure delete clone data', error: e);
       return false;
