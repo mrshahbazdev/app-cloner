@@ -437,18 +437,24 @@ public class StubActivity extends Activity {
         }
 
         /**
-         * Deep LoadedApk patching: replace the package name, resource
-         * directories, and ApplicationInfo so the system creates
-         * Resources from the TARGET APK instead of the host.
-         * This prevents resource ID collisions between host and target.
+         * Deep LoadedApk patching: replace resource directories and
+         * ApplicationInfo so the system creates Resources from the
+         * TARGET APK instead of the host.  This prevents resource ID
+         * collisions between host and target.
+         *
+         * NOTE: mPackageName is intentionally NOT changed.  It must
+         * stay as the host package because Android's ContextImpl uses
+         * it as the "op package" for IPC security checks
+         * (AppOpsManager.checkPackage).  Changing it to the target
+         * package triggers SecurityException because the target
+         * package does not belong to the host app's UID.  The target
+         * package name is exposed through our ContextWrapper and the
+         * IPackageManager proxy instead.
          */
         private static void patchLoadedApkIdentity(Object loadedApk,
                 String targetPackage, ApplicationInfo targetAppInfo,
                 String baseApkPath, String[] splitApkPaths) {
             Class<?> cls = loadedApk.getClass();
-
-            // Package name — makes ContextImpl.getPackageName() return target
-            setField(cls, loadedApk, "mPackageName", targetPackage);
 
             // Resource directory — makes system create Resources from target APK
             setField(cls, loadedApk, "mResDir", baseApkPath);
