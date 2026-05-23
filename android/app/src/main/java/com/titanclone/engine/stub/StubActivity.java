@@ -575,9 +575,78 @@ public class StubActivity extends Activity {
                 } catch (Exception e) {
                     Log.w(TAG, "Failed to clear cached PM", e);
                 }
+
+                // Patch mPM in existing ApplicationPackageManager instances.
+                // The context's PM was created before our proxy, so its mPM
+                // field points to the original IPackageManager binder proxy.
+                patchApplicationPackageManagers(proxy);
+
+                // Safety net: suppress uncaught SecurityExceptions on
+                // background threads.  Clone apps cannot perform many
+                // cross-package operations; letting these crash the process
+                // is unacceptable.
+                installSecurityExceptionHandler();
             } catch (Exception e) {
                 Log.w(TAG, "IPackageManager proxy injection failed", e);
             }
+        }
+
+        /**
+         * Patch the mPM field in all reachable ApplicationPackageManager
+         * instances so they use our proxy instead of the original binder.
+         */
+        private static void patchApplicationPackageManagers(Object proxy) {
+            try {
+                // Get the context's PackageManager and replace its mPM
+                Context ctx = VirtualCore.get().getContext();
+                android.content.pm.PackageManager pm = ctx.getPackageManager();
+                if (pm != null) {
+                    Field mPM = pm.getClass().getDeclaredField("mPM");
+                    mPM.setAccessible(true);
+                    mPM.set(pm, proxy);
+                    Log.d(TAG, "Patched mPM in context PackageManager");
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to patch ApplicationPackageManager.mPM", e);
+            }
+
+            // Also patch the target app's PackageManager if available
+            if (sTargetApp != null) {
+                try {
+                    android.content.pm.PackageManager tpm =
+                            sTargetApp.getPackageManager();
+                    if (tpm != null) {
+                        Field mPM = tpm.getClass().getDeclaredField("mPM");
+                        mPM.setAccessible(true);
+                        mPM.set(tpm, proxy);
+                        Log.d(TAG, "Patched mPM in target app PackageManager");
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to patch target PM.mPM", e);
+                }
+            }
+        }
+
+        /**
+         * Install a default uncaught-exception handler that suppresses
+         * SecurityException from cross-package operations.  Without
+         * this, background threads that perform forbidden PM/system
+         * calls crash the entire clone process.
+         */
+        private static void installSecurityExceptionHandler() {
+            final Thread.UncaughtExceptionHandler prev =
+                    Thread.getDefaultUncaughtExceptionHandler();
+            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+                if (e instanceof SecurityException) {
+                    Log.w(TAG, "Suppressed uncaught SecurityException on "
+                            + t.getName() + ": " + e.getMessage());
+                    return;
+                }
+                // Forward non-security exceptions to the previous handler
+                if (prev != null) {
+                    prev.uncaughtException(t, e);
+                }
+            });
         }
 
         /**
