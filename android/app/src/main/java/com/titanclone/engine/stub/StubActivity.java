@@ -224,6 +224,11 @@ public class StubActivity extends Activity {
                     }
                 };
 
+                // Pre-load native libraries so JNI methods are available when
+                // the target Application runs (required by Xamarin/.NET MAUI
+                // and other apps with native runtimes).
+                preloadNativeLibraries(nativeLibDir, nativeLibPath);
+
                 sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
                 sTargetAppCreated = true;
 
@@ -285,11 +290,82 @@ public class StubActivity extends Activity {
                     Log.w(TAG, "Failed to add to mAllApplications", e);
                 }
 
-                sTargetApp.onCreate();
+                // Call onCreate() in its own try-catch so that apps whose
+                // onCreate() requires a native runtime (Xamarin, React Native,
+                // etc.) don't crash the whole clone process if loading fails.
+                try {
+                    sTargetApp.onCreate();
+                } catch (Throwable onCreateErr) {
+                    Log.w(TAG, "Target Application.onCreate() failed (non-fatal): "
+                            + onCreateErr.getMessage());
+                }
+
                 Log.i(TAG, "Early Application injection succeeded: " + appClassName);
 
             } catch (Throwable e) {
                 Log.e(TAG, "Early Application injection failed for " + targetPackage, e);
+            }
+        }
+
+        /**
+         * Try to load all native libraries from the extracted lib directory
+         * so that JNI methods are registered before Application.onCreate().
+         * Also searches the original app's nativeLibraryDir as fallback.
+         */
+        private static void preloadNativeLibraries(File libDir, String nativeLibPath) {
+            // Collect directories: extracted lib dir + all paths from nativeLibPath
+            java.util.List<File> libDirs = new java.util.ArrayList<>();
+            libDirs.add(libDir);
+
+            // Also check subdirectories (e.g. lib/arm64-v8a/)
+            File[] subDirs = libDir.listFiles(File::isDirectory);
+            if (subDirs != null) {
+                for (File sub : subDirs) {
+                    libDirs.add(sub);
+                }
+            }
+
+            // Add all paths from the full native lib path (includes original app dir)
+            if (nativeLibPath != null) {
+                for (String path : nativeLibPath.split(File.pathSeparator)) {
+                    File dir = new File(path);
+                    if (dir.exists() && dir.isDirectory() && !libDirs.contains(dir)) {
+                        libDirs.add(dir);
+                    }
+                }
+            }
+
+            // Collect all .so files
+            java.util.List<File> allSoFiles = new java.util.ArrayList<>();
+            for (File dir : libDirs) {
+                File[] soFiles = dir.listFiles((d, name) -> name.endsWith(".so"));
+                if (soFiles != null) {
+                    java.util.Collections.addAll(allSoFiles, soFiles);
+                }
+            }
+
+            // Multiple passes to resolve dependency ordering:
+            // some .so files depend on others, so a failed load on pass 1
+            // may succeed on pass 2 after its dependency was loaded.
+            int loaded = 0;
+            for (int pass = 0; pass < 3 && !allSoFiles.isEmpty(); pass++) {
+                java.util.Iterator<File> it = allSoFiles.iterator();
+                while (it.hasNext()) {
+                    File so = it.next();
+                    try {
+                        System.load(so.getAbsolutePath());
+                        loaded++;
+                        it.remove();
+                    } catch (UnsatisfiedLinkError e) {
+                        // May succeed on next pass after deps are loaded
+                    } catch (Throwable e) {
+                        it.remove(); // Won't succeed on retry
+                    }
+                }
+            }
+
+            if (loaded > 0) {
+                Log.i(TAG, "Pre-loaded " + loaded + " native libraries from " + libDir);
             }
         }
 
