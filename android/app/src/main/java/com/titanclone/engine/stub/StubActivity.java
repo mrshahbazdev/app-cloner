@@ -237,6 +237,13 @@ public class StubActivity extends Activity {
                 final String tgtPkg = targetPackage;
                 final String apkPath = apkFile.getAbsolutePath();
 
+                // Pre-load native libraries using Runtime.nativeLoad() with the
+                // TARGET classloader.  Unlike System.load() (which associates
+                // libraries with the calling class's classloader — the HOST),
+                // nativeLoad() explicitly binds the library to customLoader so
+                // that JNI_OnLoad's FindClass() resolves target-app classes.
+                preloadNativeLibraries(nativeLibDir, nativeLibPath, customLoader);
+
                 // ContextWrapper that presents the target app's identity so that
                 // Application.attachBaseContext() sees the correct package name,
                 // ApplicationInfo (with nativeLibraryDir), and APK paths.
@@ -354,6 +361,82 @@ public class StubActivity extends Activity {
                 mRes.set(loadedApk, res);
             } catch (Exception e) {
                 Log.w(TAG, "setLoadedApk mResources failed", e);
+            }
+        }
+
+        /**
+         * Pre-load native libraries using Runtime.nativeLoad() which accepts
+         * a ClassLoader parameter.  This binds each library to the TARGET
+         * classloader so that JNI_OnLoad() resolves classes from the clone
+         * app, not the host app.
+         *
+         * This is fundamentally different from System.load() which uses
+         * VMStack.getCallingClassLoader() — always the HOST classloader
+         * when called from our code — causing JNI_OnLoad to fail because
+         * it can't find target-app classes via FindClass().
+         */
+        private static void preloadNativeLibraries(File libDir, String nativeLibPath,
+                ClassLoader targetLoader) {
+            Method nativeLoad;
+            try {
+                nativeLoad = Runtime.class.getDeclaredMethod("nativeLoad",
+                        String.class, ClassLoader.class);
+                nativeLoad.setAccessible(true);
+            } catch (NoSuchMethodException e) {
+                Log.w(TAG, "Runtime.nativeLoad not available, skipping pre-load");
+                return;
+            }
+
+            // Collect directories to scan
+            java.util.List<File> libDirs = new java.util.ArrayList<>();
+            if (libDir.isDirectory()) libDirs.add(libDir);
+            // Also check subdirectories (e.g. lib/arm64-v8a/)
+            File[] subDirs = libDir.listFiles(File::isDirectory);
+            if (subDirs != null) {
+                for (File sub : subDirs) libDirs.add(sub);
+            }
+            if (nativeLibPath != null) {
+                for (String path : nativeLibPath.split(File.pathSeparator)) {
+                    File dir = new File(path);
+                    if (dir.isDirectory() && !libDirs.contains(dir)) {
+                        libDirs.add(dir);
+                    }
+                }
+            }
+
+            // Collect all .so files
+            java.util.List<File> allSoFiles = new java.util.ArrayList<>();
+            for (File dir : libDirs) {
+                File[] soFiles = dir.listFiles((d, name) -> name.endsWith(".so"));
+                if (soFiles != null) {
+                    java.util.Collections.addAll(allSoFiles, soFiles);
+                }
+            }
+
+            // Multiple passes for dependency ordering
+            int loaded = 0;
+            for (int pass = 0; pass < 3 && !allSoFiles.isEmpty(); pass++) {
+                java.util.Iterator<File> it = allSoFiles.iterator();
+                while (it.hasNext()) {
+                    File so = it.next();
+                    try {
+                        String error = (String) nativeLoad.invoke(
+                                Runtime.getRuntime(), so.getAbsolutePath(), targetLoader);
+                        if (error == null) {
+                            loaded++;
+                            it.remove();
+                        } else {
+                            // Non-null = error message; may succeed on next pass
+                            // after dependencies are loaded
+                        }
+                    } catch (Throwable e) {
+                        it.remove(); // Won't succeed on retry
+                    }
+                }
+            }
+
+            if (loaded > 0) {
+                Log.i(TAG, "Pre-loaded " + loaded + " native libraries (target classloader)");
             }
         }
 
