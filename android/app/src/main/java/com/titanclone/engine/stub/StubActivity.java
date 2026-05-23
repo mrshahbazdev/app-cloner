@@ -504,10 +504,44 @@ public class StubActivity extends Activity {
                                     }
                                 }
 
+                                // Block cross-package component mutations.
+                                // Clone apps cannot enable/disable components
+                                // in other packages — silently no-op instead
+                                // of letting the SecurityException crash.
+                                if ("setComponentEnabledSetting".equals(name)
+                                        && args != null && args.length > 0) {
+                                    try {
+                                        Object cn = args[0];
+                                        if (cn instanceof android.content.ComponentName) {
+                                            String cnPkg = ((android.content.ComponentName) cn)
+                                                    .getPackageName();
+                                            if (!hostPackage.equals(cnPkg)) {
+                                                Log.d(TAG, "Blocked setComponentEnabledSetting for "
+                                                        + cnPkg);
+                                                return null;
+                                            }
+                                        }
+                                    } catch (Exception ignore) {}
+                                }
+
                                 try {
                                     return method.invoke(originalPM, args);
                                 } catch (java.lang.reflect.InvocationTargetException e) {
-                                    throw e.getTargetException();
+                                    Throwable cause = e.getTargetException();
+                                    // Suppress SecurityException from
+                                    // cross-package operations that the
+                                    // clone process cannot perform.
+                                    if (cause instanceof SecurityException) {
+                                        Log.w(TAG, "Suppressed SecurityException: "
+                                                + cause.getMessage());
+                                        // Return safe defaults
+                                        Class<?> rt = method.getReturnType();
+                                        if (rt == boolean.class) return false;
+                                        if (rt == int.class) return 0;
+                                        if (rt == long.class) return 0L;
+                                        return null;
+                                    }
+                                    throw cause;
                                 }
                             }
                         });
