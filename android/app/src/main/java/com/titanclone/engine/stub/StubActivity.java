@@ -220,8 +220,18 @@ public class StubActivity extends Activity {
                 // native library directory so that frameworks like Xamarin/Mono can
                 // locate libmonodroid.so (and friends) during attachBaseContext().
                 final ApplicationInfo targetAppInfo = new ApplicationInfo(appInfo);
+                targetAppInfo.packageName = targetPackage;
                 targetAppInfo.sourceDir = apkFile.getAbsolutePath();
                 targetAppInfo.publicSourceDir = apkFile.getAbsolutePath();
+                // Preserve split APK paths — needed for App Bundle resources
+                if (splitApks != null && splitApks.length > 0) {
+                    String[] splitDirs = new String[splitApks.length];
+                    for (int i = 0; i < splitApks.length; i++) {
+                        splitDirs[i] = splitApks[i].getAbsolutePath();
+                    }
+                    targetAppInfo.splitSourceDirs = splitDirs;
+                    targetAppInfo.splitPublicSourceDirs = splitDirs;
+                }
                 // Prefer the original app's nativeLibraryDir (system-extracted),
                 // fall back to the clone's extracted lib dir.
                 if (appInfo.nativeLibraryDir != null && new File(appInfo.nativeLibraryDir).isDirectory()) {
@@ -247,6 +257,8 @@ public class StubActivity extends Activity {
                 // ContextWrapper that presents the target app's identity so that
                 // Application.attachBaseContext() sees the correct package name,
                 // ApplicationInfo (with nativeLibraryDir), and APK paths.
+                // Also redirect file operations to the clone's sandboxed data dir.
+                final File cloneDataDir = dataDir;
                 Context targetContext = new android.content.ContextWrapper(
                         VirtualCore.get().getContext()) {
                     @Override public Resources getResources() { return targetRes; }
@@ -258,11 +270,62 @@ public class StubActivity extends Activity {
                     @Override public String getPackageName() { return tgtPkg; }
                     @Override public String getPackageCodePath() { return apkPath; }
                     @Override public String getPackageResourcePath() { return apkPath; }
+                    @Override public File getFilesDir() {
+                        File d = new File(cloneDataDir, "files");
+                        d.mkdirs();
+                        return d;
+                    }
+                    @Override public File getCacheDir() {
+                        File d = new File(cloneDataDir, "cache");
+                        d.mkdirs();
+                        return d;
+                    }
+                    @Override public File getDataDir() { return cloneDataDir; }
+                    @Override public java.io.File getDatabasePath(String name) {
+                        File d = new File(cloneDataDir, "databases");
+                        d.mkdirs();
+                        return new File(d, name);
+                    }
+                    @Override public File getDir(String name, int mode) {
+                        File d = new File(cloneDataDir, "app_" + name);
+                        d.mkdirs();
+                        return d;
+                    }
+                    @Override public android.content.SharedPreferences getSharedPreferences(
+                            String name, int mode) {
+                        File prefsDir = new File(cloneDataDir, "shared_prefs");
+                        prefsDir.mkdirs();
+                        return super.getSharedPreferences(name, mode);
+                    }
                 };
 
                 sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
                 sTargetAppCreated = true;
                 sTargetPackage = targetPackage;
+
+                // Collect split APK paths for LoadedApk patching
+                String[] splitPaths = null;
+                if (splitApks != null && splitApks.length > 0) {
+                    splitPaths = new String[splitApks.length];
+                    for (int i = 0; i < splitApks.length; i++) {
+                        splitPaths[i] = splitApks[i].getAbsolutePath();
+                    }
+                }
+                // Also include original installed app's split APKs
+                try {
+                    if (appInfo.splitSourceDirs != null) {
+                        java.util.List<String> allSplits = new java.util.ArrayList<>();
+                        if (splitPaths != null) {
+                            java.util.Collections.addAll(allSplits, splitPaths);
+                        }
+                        for (String origSplit : appInfo.splitSourceDirs) {
+                            if (!allSplits.contains(origSplit)) {
+                                allSplits.add(origSplit);
+                            }
+                        }
+                        splitPaths = allSplits.toArray(new String[0]);
+                    }
+                } catch (Exception ignore) {}
 
                 // Inject into ActivityThread and ALL LoadedApk references
                 Class<?> atClass = Class.forName("android.app.ActivityThread");
@@ -275,7 +338,7 @@ public class StubActivity extends Activity {
                 mInitApp.setAccessible(true);
                 mInitApp.set(activityThread, sTargetApp);
 
-                // 2. mBoundApplication.info (LoadedApk)
+                // 2. mBoundApplication.info (LoadedApk) — full identity patch
                 Field mBoundApp = atClass.getDeclaredField("mBoundApplication");
                 mBoundApp.setAccessible(true);
                 Object boundApp = mBoundApp.get(activityThread);
@@ -285,6 +348,8 @@ public class StubActivity extends Activity {
                     Object loadedApk = infoField.get(boundApp);
                     if (loadedApk != null) {
                         setLoadedApkFields(loadedApk, sTargetApp, customLoader, targetRes);
+                        patchLoadedApkIdentity(loadedApk, targetPackage,
+                                targetAppInfo, apkFile.getAbsolutePath(), splitPaths);
                     }
                 }
 
@@ -301,6 +366,8 @@ public class StubActivity extends Activity {
                             }
                             if (ref != null) {
                                 setLoadedApkFields(ref, sTargetApp, customLoader, targetRes);
+                                patchLoadedApkIdentity(ref, targetPackage,
+                                        targetAppInfo, apkFile.getAbsolutePath(), splitPaths);
                             }
                         }
                     }
@@ -321,6 +388,11 @@ public class StubActivity extends Activity {
                 } catch (Exception e) {
                     Log.w(TAG, "Failed to add to mAllApplications", e);
                 }
+
+                // 5. Hook IPackageManager — redirect host package queries
+                //    to the target so apps see their own identity
+                String hostPkg = VirtualCore.get().getContext().getPackageName();
+                injectPackageManagerProxy(hostPkg, targetPackage);
 
                 // Call onCreate() in its own try-catch so that apps whose
                 // onCreate() requires a native runtime (Xamarin, React Native,
@@ -361,6 +433,135 @@ public class StubActivity extends Activity {
                 mRes.set(loadedApk, res);
             } catch (Exception e) {
                 Log.w(TAG, "setLoadedApk mResources failed", e);
+            }
+        }
+
+        /**
+         * Deep LoadedApk patching: replace the package name, resource
+         * directories, and ApplicationInfo so the system creates
+         * Resources from the TARGET APK instead of the host.
+         * This prevents resource ID collisions between host and target.
+         */
+        private static void patchLoadedApkIdentity(Object loadedApk,
+                String targetPackage, ApplicationInfo targetAppInfo,
+                String baseApkPath, String[] splitApkPaths) {
+            Class<?> cls = loadedApk.getClass();
+
+            // Package name — makes ContextImpl.getPackageName() return target
+            setField(cls, loadedApk, "mPackageName", targetPackage);
+
+            // Resource directory — makes system create Resources from target APK
+            setField(cls, loadedApk, "mResDir", baseApkPath);
+
+            // Split resource directories
+            setField(cls, loadedApk, "mSplitResDirs", splitApkPaths);
+
+            // ApplicationInfo — used by ContextImpl.getApplicationInfo()
+            setField(cls, loadedApk, "mApplicationInfo", targetAppInfo);
+
+            // Data directory
+            if (targetAppInfo.dataDir != null) {
+                setField(cls, loadedApk, "mDataDir", targetAppInfo.dataDir);
+                setField(cls, loadedApk, "mDataDirFile",
+                        new File(targetAppInfo.dataDir));
+            }
+
+            Log.d(TAG, "Patched LoadedApk identity → " + targetPackage);
+        }
+
+        private static void setField(Class<?> cls, Object obj,
+                String name, Object value) {
+            try {
+                Field f = cls.getDeclaredField(name);
+                f.setAccessible(true);
+                f.set(obj, value);
+            } catch (Exception e) {
+                Log.w(TAG, "setField " + name + " failed: " + e.getMessage());
+            }
+        }
+
+        /**
+         * Hook ActivityThread.sPackageManager with a dynamic proxy so that
+         * IPackageManager calls in this process return the target app's
+         * info when queried for the host package.
+         */
+        private static void injectPackageManagerProxy(
+                String hostPackage, String targetPackage) {
+            try {
+                Class<?> atClass = Class.forName("android.app.ActivityThread");
+                Field spmField = atClass.getDeclaredField("sPackageManager");
+                spmField.setAccessible(true);
+                final Object originalPM = spmField.get(null);
+                if (originalPM == null) return;
+
+                Class<?> ipmClass = Class.forName(
+                        "android.content.pm.IPackageManager");
+
+                Object proxy = java.lang.reflect.Proxy.newProxyInstance(
+                        ipmClass.getClassLoader(),
+                        new Class<?>[]{ ipmClass },
+                        new java.lang.reflect.InvocationHandler() {
+                            @Override
+                            public Object invoke(Object p, Method method,
+                                    Object[] args) throws Throwable {
+                                // Redirect host package queries to target
+                                if (args != null && args.length > 0
+                                        && args[0] instanceof String) {
+                                    String pkg = (String) args[0];
+                                    if (hostPackage.equals(pkg)) {
+                                        args[0] = targetPackage;
+                                    }
+                                }
+
+                                // checkPermission(permName, pkgName)
+                                if ("checkPermission".equals(method.getName())
+                                        && args != null && args.length >= 2
+                                        && args[1] instanceof String) {
+                                    String pkg = (String) args[1];
+                                    if (hostPackage.equals(pkg)) {
+                                        args[1] = targetPackage;
+                                    }
+                                }
+
+                                try {
+                                    return method.invoke(originalPM, args);
+                                } catch (java.lang.reflect.InvocationTargetException e) {
+                                    throw e.getTargetException();
+                                }
+                            }
+                        });
+
+                spmField.set(null, proxy);
+                Log.i(TAG, "IPackageManager proxy injected: "
+                        + hostPackage + " → " + targetPackage);
+
+                // Also replace mPM in any cached ApplicationPackageManager
+                try {
+                    Method currentAT = atClass.getDeclaredMethod(
+                            "currentActivityThread");
+                    currentAT.setAccessible(true);
+                    Object at = currentAT.invoke(null);
+                    Field mBoundApp = atClass.getDeclaredField(
+                            "mBoundApplication");
+                    mBoundApp.setAccessible(true);
+                    Object boundApp = mBoundApp.get(at);
+                    if (boundApp != null) {
+                        Field infoField = boundApp.getClass()
+                                .getDeclaredField("info");
+                        infoField.setAccessible(true);
+                        Object loadedApk = infoField.get(boundApp);
+                        if (loadedApk != null) {
+                            Field mPkgMgr = loadedApk.getClass()
+                                    .getDeclaredField("mPackageManager");
+                            mPkgMgr.setAccessible(true);
+                            mPkgMgr.set(loadedApk, null);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to clear cached PM", e);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "IPackageManager proxy injection failed", e);
             }
         }
 
