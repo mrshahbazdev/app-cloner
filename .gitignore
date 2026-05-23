@@ -20,7 +20,6 @@ build/
 
 # Generated files (keeping .freezed.dart and .g.dart tracked for CI)
 *.mocks.dart
-lib/services/generated/
 
 # IDE
 .vscode/
@@ -38,3 +37,7 @@ Thumbs.db
 coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# Debug log files
+*.txt
+!README.txt
