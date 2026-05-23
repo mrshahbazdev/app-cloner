@@ -1,0 +1,157 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/extensions/context_extensions.dart';
+import '../../../../models/clone_info.dart';
+import '../../../../services/clone_engine_service.dart';
+import '../../providers/app_picker_provider.dart';
+import '../widgets/app_list_tile.dart';
+import '../widgets/category_filter_bar.dart';
+import '../../../dashboard/providers/dashboard_provider.dart';
+
+class AppPickerScreen extends ConsumerWidget {
+  const AppPickerScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filteredApps = ref.watch(filteredAppsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select App to Clone'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(110),
+          child: Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: TextField(
+                  onChanged: (value) =>
+                      ref.read(appSearchQueryProvider.notifier).state = value,
+                  decoration: InputDecoration(
+                    hintText: 'Search apps...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: context.colorScheme.surfaceContainerHighest,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const CategoryFilterBar(),
+            ],
+          ),
+        ),
+      ),
+      body: filteredApps.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48),
+              const SizedBox(height: 16),
+              Text('Failed to load apps: $error'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () =>
+                    ref.read(appPickerProvider.notifier).refresh(),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (apps) {
+          if (apps.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.search_off,
+                      size: 64,
+                      color: context.colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text('No apps found',
+                      style: context.textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text('Try adjusting your search or filter',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      )),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: apps.length,
+            itemBuilder: (context, index) {
+              return AppListTile(
+                app: apps[index],
+                onTap: () => _createClone(context, ref, apps[index]),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _createClone(
+    BuildContext context,
+    WidgetRef ref,
+    InstalledApp app,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Clone'),
+        content: Text('Clone "${app.appName}"?\n\n'
+            'A virtual identity will be automatically generated.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clone'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final engine = ref.read(cloneEngineServiceProvider);
+    final clone = await engine.createClone(
+      packageName: app.packageName,
+      userId: 0,
+    );
+
+    if (!context.mounted) return;
+    Navigator.pop(context); // dismiss loading dialog
+
+    if (clone != null) {
+      ref.read(dashboardProvider.notifier).refreshClones();
+      context.showSnackBar('Clone created: ${app.appName}');
+      context.pop();
+    } else {
+      context.showSnackBar('Failed to create clone', isError: true);
+    }
+  }
+}
