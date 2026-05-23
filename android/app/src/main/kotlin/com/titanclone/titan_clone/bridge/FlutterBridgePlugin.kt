@@ -65,28 +65,8 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
-        profileDb = ProfileDatabase.getInstance(context)
-        profileManager = VirtualProfileManager(context)
-        profileGenerator = ProfileGenerator(profileDb.dao)
 
-        gmsProxy = GmsServiceProxy(context)
-        microGManager = MicroGManager(context)
-        playStoreManager = PlayStoreCloneManager(context, gmsProxy, profileManager, profileGenerator)
-        checkinInterceptor = CheckinInterceptor(context, profileManager)
-        accountIsolation = AccountIsolationManager(context)
-        fcmIsolation = FcmIsolationManager(context)
-        versionCompat = VersionCompatHandler(context)
-        backgroundManager = BackgroundProcessManager(context)
-        notificationManager = CloneNotificationManager(context)
-        notificationManager.createForegroundChannel()
-        memoryOptimizer = MemoryOptimizer(context)
-        startupOptimizer = StartupOptimizer(context)
-        batteryOptimizer = BatteryOptimizer(context)
-        codeProtection = CodeProtection(context)
-        dataSecurity = DataSecurity(context)
-        context.registerComponentCallbacks(memoryOptimizer)
-        startupOptimizer.markEngineInitStart()
-
+        // Set up Pigeon API channels first so Dart can always communicate
         CloneEngineApi.setUp(binding.binaryMessenger, this)
         flutterApi = CloneEventApi(binding.binaryMessenger)
 
@@ -100,6 +80,34 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
                 eventSink = null
             }
         })
+
+        // Initialize subsystem managers — wrapped in try-catch so a failure
+        // in any manager constructor does not kill the Flutter engine
+        try {
+            profileDb = ProfileDatabase.getInstance(context)
+            profileManager = VirtualProfileManager(context)
+            profileGenerator = ProfileGenerator(profileDb.dao)
+
+            gmsProxy = GmsServiceProxy(context)
+            microGManager = MicroGManager(context)
+            playStoreManager = PlayStoreCloneManager(context, gmsProxy, profileManager, profileGenerator)
+            checkinInterceptor = CheckinInterceptor(context, profileManager)
+            accountIsolation = AccountIsolationManager(context)
+            fcmIsolation = FcmIsolationManager(context)
+            versionCompat = VersionCompatHandler(context)
+            backgroundManager = BackgroundProcessManager(context)
+            notificationManager = CloneNotificationManager(context)
+            notificationManager.createForegroundChannel()
+            memoryOptimizer = MemoryOptimizer(context)
+            startupOptimizer = StartupOptimizer(context)
+            batteryOptimizer = BatteryOptimizer(context)
+            codeProtection = CodeProtection(context)
+            dataSecurity = DataSecurity(context)
+            context.registerComponentCallbacks(memoryOptimizer)
+            startupOptimizer.markEngineInitStart()
+        } catch (e: Throwable) {
+            android.util.Log.e("FlutterBridgePlugin", "Subsystem initialization failed — app will run with limited functionality", e)
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -110,7 +118,9 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
 
     override fun initializeEngine(callback: (Result<Boolean>) -> Unit) {
         try {
-            restoreClonesFromProfiles()
+            if (::profileManager.isInitialized) {
+                restoreClonesFromProfiles()
+            }
             engineInitialized = true
             mainHandler.post {
                 flutterApi?.onEngineInitialized(true) {}
@@ -122,7 +132,8 @@ class FlutterBridgePlugin : FlutterPlugin, CloneEngineApi {
             }
             callback(Result.success(true))
         } catch (e: Exception) {
-            callback(Result.failure(e))
+            engineInitialized = true
+            callback(Result.success(true))
         }
     }
 

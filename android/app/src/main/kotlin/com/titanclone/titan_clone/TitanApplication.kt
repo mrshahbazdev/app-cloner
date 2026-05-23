@@ -2,18 +2,25 @@ package com.titanclone.titan_clone
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import com.titanclone.engine.core.VirtualCore
 
 class TitanApplication : Application() {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
-        // Early initialization of the virtual engine
-        VirtualCore.get().doAttachBaseContext(this)
+        try {
+            VirtualCore.get().doAttachBaseContext(this)
+        } catch (e: Throwable) {
+            Log.e("TitanApplication", "VirtualCore attach failed", e)
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
-        // Full initialization of virtual subsystems and hooks
-        VirtualCore.get().doCreate()
+        try {
+            VirtualCore.get().doCreate()
+        } catch (e: Throwable) {
+            Log.e("TitanApplication", "VirtualCore init failed", e)
+        }
     }
 }

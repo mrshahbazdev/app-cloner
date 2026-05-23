@@ -91,9 +91,6 @@ public class VirtualCore {
             // Initialize and inject system service stubs
             stubManager = StubManager.get();
             stubManager.registerStubs();
-            
-            // Inject virtual instrumentation globally into ActivityThread
-            com.titanclone.engine.stub.StubActivity.VAInstrumentation.injectInstrumentation();
 
             // Listen for process deaths
             processManager.setProcessStateListener((cloneId, processIndex) -> {
@@ -121,7 +118,7 @@ public class VirtualCore {
                     + stubManager.getStubCount() + " stubs, "
                     + processManager.getAvailableSlots() + " process slots");
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "Engine initialization failed", e);
         }
     }
