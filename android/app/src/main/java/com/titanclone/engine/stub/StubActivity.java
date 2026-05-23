@@ -365,6 +365,89 @@ public class StubActivity extends Activity {
         }
 
         /**
+         * Add the target APK's asset paths to every reachable AssetManager
+         * so that clone resource IDs are resolvable regardless of which
+         * Resources / Context path the app code uses.
+         */
+        private static void addTargetAssetPaths(Activity activity, String packageName) {
+            try {
+                Method addAssetPath = android.content.res.AssetManager.class
+                        .getDeclaredMethod("addAssetPath", String.class);
+                addAssetPath.setAccessible(true);
+
+                File pkgDir = VirtualCore.get().getStorage().getPackageApkDir(packageName);
+                java.util.List<String> apkPaths = new java.util.ArrayList<>();
+
+                // Collect clone APK paths (base + splits)
+                File baseApk = new File(pkgDir, "base.apk");
+                if (baseApk.exists()) apkPaths.add(baseApk.getAbsolutePath());
+                File[] splits = pkgDir.listFiles((d, name) ->
+                        name.endsWith(".apk") && !name.equals("base.apk"));
+                if (splits != null) {
+                    for (File s : splits) apkPaths.add(s.getAbsolutePath());
+                }
+
+                // Also add original installed app's APK paths as fallback
+                try {
+                    ApplicationInfo srcInfo = VirtualCore.get().getContext()
+                            .getPackageManager().getApplicationInfo(packageName, 0);
+                    if (srcInfo.sourceDir != null && !apkPaths.contains(srcInfo.sourceDir)) {
+                        apkPaths.add(srcInfo.sourceDir);
+                    }
+                    if (srcInfo.splitSourceDirs != null) {
+                        for (String split : srcInfo.splitSourceDirs) {
+                            if (!apkPaths.contains(split)) apkPaths.add(split);
+                        }
+                    }
+                } catch (PackageManager.NameNotFoundException ignore) {}
+
+                // Inject into all reachable AssetManagers
+                java.util.Set<android.content.res.AssetManager> injected = new java.util.HashSet<>();
+
+                // Activity's own resources
+                android.content.res.AssetManager actAm = activity.getResources().getAssets();
+                for (String p : apkPaths) addAssetPath.invoke(actAm, p);
+                injected.add(actAm);
+
+                // Base context resources
+                try {
+                    android.content.res.AssetManager baseAm = activity.getBaseContext().getResources().getAssets();
+                    if (!injected.contains(baseAm)) {
+                        for (String p : apkPaths) addAssetPath.invoke(baseAm, p);
+                        injected.add(baseAm);
+                    }
+                } catch (Exception ignore) {}
+
+                // Application context resources
+                try {
+                    android.content.res.AssetManager appAm = activity.getApplicationContext().getResources().getAssets();
+                    if (!injected.contains(appAm)) {
+                        for (String p : apkPaths) addAssetPath.invoke(appAm, p);
+                        injected.add(appAm);
+                    }
+                } catch (Exception ignore) {}
+
+                // Target Application resources
+                if (sTargetApp != null) {
+                    try {
+                        android.content.res.AssetManager tgtAm = sTargetApp.getResources().getAssets();
+                        if (!injected.contains(tgtAm)) {
+                            for (String p : apkPaths) addAssetPath.invoke(tgtAm, p);
+                            injected.add(tgtAm);
+                        }
+                    } catch (Exception ignore) {}
+                }
+
+                Log.d(TAG, "Injected " + apkPaths.size() + " asset paths into "
+                        + injected.size() + " AssetManagers");
+            } catch (NoSuchMethodException e) {
+                Log.w(TAG, "AssetManager.addAssetPath not available");
+            } catch (Exception e) {
+                Log.w(TAG, "Asset path injection failed", e);
+            }
+        }
+
+        /**
          * Pre-load native libraries using Runtime.nativeLoad() which accepts
          * a ClassLoader parameter.  This binds each library to the TARGET
          * classloader so that JNI_OnLoad() resolves classes from the clone
@@ -562,28 +645,35 @@ public class StubActivity extends Activity {
                     return;
                 }
 
-                // Inject resources into activity
+                // --- Deep resource injection ---
+                // 1. Add target APK asset paths to the activity's own
+                //    AssetManager so that resource IDs from the clone APK
+                //    are resolvable regardless of which Resources object
+                //    the app code uses (ContextThemeWrapper, base context,
+                //    ApplicationContext, custom wrappers, etc.).
+                if (packageName != null) {
+                    addTargetAssetPaths(activity, packageName);
+                }
+
+                // 2. Replace the Resources object in every layer
                 try {
                     Field resField = Activity.class.getDeclaredField("mResources");
                     resField.setAccessible(true);
                     resField.set(activity, targetRes);
                 } catch (NoSuchFieldException ignore) {}
 
-                // Inject into ContextThemeWrapper
                 try {
                     Field themeResField = android.view.ContextThemeWrapper.class.getDeclaredField("mResources");
                     themeResField.setAccessible(true);
                     themeResField.set(activity, targetRes);
                 } catch (NoSuchFieldException ignore) {}
 
-                // Inject base context resources
                 Context baseCtx = activity.getBaseContext();
                 try {
                     Field baseResField = baseCtx.getClass().getDeclaredField("mResources");
                     baseResField.setAccessible(true);
                     baseResField.set(baseCtx, targetRes);
                 } catch (Exception ex) {
-                    // ContextImpl implementation details vary across Android versions, inject via mResources in base context class if possible
                     try {
                         Method getImpl = baseCtx.getClass().getDeclaredMethod("getImpl", Context.class);
                         getImpl.setAccessible(true);
