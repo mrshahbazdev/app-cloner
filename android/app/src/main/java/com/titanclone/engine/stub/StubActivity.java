@@ -151,6 +151,7 @@ public class StubActivity extends Activity {
         
         private static android.app.Application sTargetApp = null;
         private static boolean sTargetAppCreated = false;
+        private static String sTargetPackage = null;
 
         public VAInstrumentation(Instrumentation base) {
             this.base = base;
@@ -226,6 +227,7 @@ public class StubActivity extends Activity {
 
                 sTargetApp = android.app.Instrumentation.newApplication(appClass, targetContext);
                 sTargetAppCreated = true;
+                sTargetPackage = targetPackage;
 
                 // Inject into ActivityThread and ALL LoadedApk references
                 Class<?> atClass = Class.forName("android.app.ActivityThread");
@@ -426,15 +428,28 @@ public class StubActivity extends Activity {
 
             // Cloned activity! Inject target resources and package context before calling onCreate.
             try {
-                String packageName = activity.getClass().getPackage().getName();
-                Intent intent = activity.getIntent();
-                Intent realIntent = intent != null ? intent.getParcelableExtra(EXTRA_REAL_INTENT) : null;
-                if (realIntent != null && realIntent.getComponent() != null) {
-                    packageName = realIntent.getComponent().getPackageName();
+                // Use stored target package — intent component may contain
+                // the host package name when the clone navigates internally.
+                String packageName = sTargetPackage;
+                if (packageName == null) {
+                    Intent intent = activity.getIntent();
+                    Intent realIntent = intent != null ? intent.getParcelableExtra(EXTRA_REAL_INTENT) : null;
+                    if (realIntent != null && realIntent.getComponent() != null) {
+                        packageName = realIntent.getComponent().getPackageName();
+                    }
                 }
 
-                Context appContext = activity.getApplicationContext();
-                Resources targetRes = appContext.getPackageManager().getResourcesForApplication(packageName);
+                // Prefer resources from the already-injected target Application
+                Resources targetRes;
+                if (sTargetApp != null) {
+                    targetRes = sTargetApp.getResources();
+                } else if (packageName != null) {
+                    Context appContext = activity.getApplicationContext();
+                    targetRes = appContext.getPackageManager().getResourcesForApplication(packageName);
+                } else {
+                    base.callActivityOnCreate(activity, icicle);
+                    return;
+                }
 
                 // Inject resources into activity
                 try {
