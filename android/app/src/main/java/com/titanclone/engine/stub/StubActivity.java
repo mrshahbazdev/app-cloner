@@ -226,13 +226,11 @@ public class StubActivity extends Activity {
                 // Keep appInfo.sourceDir (installed APK) — do NOT override with
                 // our copied APK path.  The system needs the real installed path
                 // for resource loading (ResourcesManager, AssetManager).
-                // Prefer the original app's nativeLibraryDir (system-extracted),
-                // fall back to the clone's extracted lib dir.
-                if (appInfo.nativeLibraryDir != null && new File(appInfo.nativeLibraryDir).isDirectory()) {
-                    targetAppInfo.nativeLibraryDir = appInfo.nativeLibraryDir;
-                } else {
-                    targetAppInfo.nativeLibraryDir = nativeLibDir.getAbsolutePath();
-                }
+                // Point nativeLibraryDir to the clone's lib dir where we
+                // extract .so files from the APK.  This is critical for
+                // apps using extractNativeLibs=false (e.g. WhatsApp) —
+                // Facebook SoLoader checks nativeLibraryDir first.
+                targetAppInfo.nativeLibraryDir = nativeLibDir.getAbsolutePath();
                 // Also set the data dir to the clone's sandbox
                 File dataDir = VirtualCore.get().getStorage().getCloneDataDir(targetPackage, 0);
                 if (dataDir != null) {
@@ -240,6 +238,12 @@ public class StubActivity extends Activity {
                 }
                 final String tgtPkg = targetPackage;
                 final String apkPath = apkFile.getAbsolutePath();
+
+                // Extract native libraries from the installed app's APKs.
+                // Apps with extractNativeLibs=false (e.g. WhatsApp) store
+                // .so files inside the APK without extracting them.  Facebook
+                // SoLoader and similar frameworks need them available on disk.
+                extractNativeLibsFromApk(appInfo, nativeLibDir);
 
                 // Pre-load native libraries using Runtime.nativeLoad() with the
                 // TARGET classloader.  Unlike System.load() (which associates
@@ -743,6 +747,74 @@ public class StubActivity extends Activity {
          * when called from our code — causing JNI_OnLoad to fail because
          * it can't find target-app classes via FindClass().
          */
+
+        /**
+         * Extract native libraries from the installed app's APK files
+         * to the clone's lib directory.  Apps with extractNativeLibs=false
+         * keep .so files inside the APK; frameworks like Facebook SoLoader
+         * need them available on the filesystem.
+         */
+        private static void extractNativeLibsFromApk(
+                ApplicationInfo appInfo, File targetLibDir) {
+            // Determine the correct ABI subdirectory
+            String abi = android.os.Build.SUPPORTED_ABIS[0];
+            String libPrefix = "lib/" + abi + "/";
+
+            // Collect all APK paths (base + splits)
+            java.util.List<String> apkPaths = new java.util.ArrayList<>();
+            if (appInfo.sourceDir != null) apkPaths.add(appInfo.sourceDir);
+            if (appInfo.splitSourceDirs != null) {
+                java.util.Collections.addAll(apkPaths, appInfo.splitSourceDirs);
+            }
+
+            targetLibDir.mkdirs();
+            int extracted = 0;
+
+            for (String apkPath : apkPaths) {
+                try (java.util.zip.ZipFile zip =
+                        new java.util.zip.ZipFile(apkPath)) {
+                    java.util.Enumeration<? extends java.util.zip.ZipEntry> entries =
+                            zip.entries();
+                    while (entries.hasMoreElements()) {
+                        java.util.zip.ZipEntry entry = entries.nextElement();
+                        String name = entry.getName();
+                        if (!name.startsWith(libPrefix) || !name.endsWith(".so"))
+                            continue;
+
+                        String soName = name.substring(libPrefix.length());
+                        // Skip subdirectories
+                        if (soName.contains("/")) continue;
+
+                        File outFile = new File(targetLibDir, soName);
+                        if (outFile.exists() && outFile.length() == entry.getSize())
+                            continue;
+
+                        try (java.io.InputStream in = zip.getInputStream(entry);
+                             java.io.FileOutputStream out =
+                                     new java.io.FileOutputStream(outFile)) {
+                            byte[] buf = new byte[8192];
+                            int len;
+                            while ((len = in.read(buf)) > 0) {
+                                out.write(buf, 0, len);
+                            }
+                        }
+                        outFile.setReadable(true, false);
+                        outFile.setExecutable(true, false);
+                        extracted++;
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to extract libs from " + apkPath
+                            + ": " + e.getMessage());
+                }
+            }
+
+            if (extracted > 0) {
+                Log.i(TAG, "Extracted " + extracted
+                        + " native libs from installed APK to "
+                        + targetLibDir.getAbsolutePath());
+            }
+        }
+
         private static void preloadNativeLibraries(File libDir, String nativeLibPath,
                 ClassLoader targetLoader) {
             Method nativeLoad;
